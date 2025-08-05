@@ -1,6 +1,6 @@
-# Next.js Tech Stack Demo
+# Game Arena
 
-A clean and modern Next.js application with a comprehensive tech stack.
+A modern gaming platform built with Next.js, featuring a comprehensive tech stack for creating an engaging gaming experience.
 
 ## Tech Stack
 
@@ -30,7 +30,7 @@ A clean and modern Next.js application with a comprehensive tech stack.
 1. Clone this repository
 2. Navigate to the project directory
     ```bash
-    cd nextjs-app
+    cd game-arena
     ```
 3. Install dependencies
     ```bash
