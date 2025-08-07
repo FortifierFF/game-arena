@@ -1,5 +1,7 @@
 'use client';
 
+import IconDemo from '@/components/IconDemo';
+
 export default function Home() {
   return (
     <main className='min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900'>
@@ -106,6 +108,22 @@ export default function Home() {
               </div>
             </dl>
           </div>
+        </div>
+      </section>
+
+      {/* Icon Demo Section */}
+      <section className='py-24 sm:py-32 bg-white'>
+        <div className='mx-auto max-w-7xl px-6 lg:px-8'>
+          <div className='mx-auto max-w-2xl lg:text-center mb-12'>
+            <h2 className='text-base font-semibold leading-7 text-indigo-600'>Icon System</h2>
+            <p className='mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl'>
+              Design System Demo
+            </p>
+            <p className='mt-6 text-lg leading-8 text-gray-600'>
+              Our consistent icon system using Lucide React with standardized sizes and styling.
+            </p>
+          </div>
+          <IconDemo />
         </div>
       </section>
 
