@@ -37,6 +37,20 @@ A modern gaming platform built with Next.js, featuring a comprehensive tech stac
     npm install
     ```
 
+### Environment Setup
+
+1. Copy the environment template:
+   ```bash
+   cp .env.example .env.local
+   ```
+
+2. Update `.env.local` with your configuration values
+
+3. Start development:
+   ```bash
+   npm run dev
+   ```
+
 ### Development
 
 Run the development server:
@@ -67,6 +81,18 @@ npm start
 -   `/src/components` - Reusable UI components
     -   `/src/components/ui` - shadcn/ui components
 -   `/src/lib` - Utility functions and shared code
+
+## Environment Variables
+
+The project uses environment variables for configuration. See `.env.example` for available variables.
+
+**Required variables:**
+- `NEXT_PUBLIC_APP_NAME` - Application name
+- `NEXT_PUBLIC_APP_VERSION` - Application version
+- `NEXT_PUBLIC_APP_URL` - Application URL
+- `NEXT_PUBLIC_API_URL` - API endpoint URL
+
+**Security:** All environment files (`.env.local`, `.env.production`) are gitignored to protect sensitive data.
 
 ## Adding shadcn/ui Components
 
