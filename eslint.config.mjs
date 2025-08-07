@@ -10,7 +10,21 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  // Use Next.js default configurations
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  
+  // Ignore patterns
+  {
+    ignores: [
+      "node_modules/**",
+      ".next/**",
+      "out/**",
+      "build/**",
+      "dist/**",
+      "*.config.js",
+      "*.config.mjs",
+    ],
+  },
 ];
 
 export default eslintConfig;

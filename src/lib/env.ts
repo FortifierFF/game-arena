@@ -1,6 +1,6 @@
 /**
  * Environment Variables Configuration
- * 
+ *
  * This file provides type-safe access to environment variables
  * with optional fallbacks for development.
  */
@@ -50,15 +50,15 @@ export const env = {
   appVersion: () => getEnvVar('NEXT_PUBLIC_APP_VERSION', '1.0.0'),
   appUrl: () => getEnvVar('NEXT_PUBLIC_APP_URL', 'http://localhost:3000'),
   apiUrl: () => getEnvVar('NEXT_PUBLIC_API_URL', 'http://localhost:3000/api'),
-  
+
   // Development
   isDevelopment: () => getEnvVar('NODE_ENV', 'development') === 'development',
   isProduction: () => getEnvVar('NODE_ENV', 'development') === 'production',
   isTest: () => getEnvVar('NODE_ENV', 'development') === 'test',
   debug: () => getBooleanEnvVar('DEBUG', false),
-  
+
   // Game Configuration
   enableGameStats: () => getBooleanEnvVar('NEXT_PUBLIC_ENABLE_GAME_STATS', true),
 };
 
-export default env; 
+export default env;
