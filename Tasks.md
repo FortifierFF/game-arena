@@ -12,7 +12,7 @@ This project aims to build a modern browser-based gaming platform featuring game
 - [x] Configure environment variables ✅
 - [x] Setup GitHub repository ✅
 - [x] Add ESLint and Prettier configuration ✅
-- [ ] Setup Husky for pre-commit hooks
+- [x] Setup Husky for pre-commit hooks ✅
 - [ ] Configure TypeScript strict mode
 - [ ] Add path aliases for cleaner imports
 
