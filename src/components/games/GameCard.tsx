@@ -4,19 +4,22 @@
  * Displays individual game information in a card format
  */
 
+'use client';
+
 import { GameCardProps } from '@/types/game';
 import { 
-  getStatusColor, 
-  getDifficultyColor, 
-  getStatusText, 
-  getGameButtonClasses, 
-  getGameButtonText,
-  formatPlayerCount,
-  formatRating
+  getGameStatusClass, 
+  getDifficultyClass, 
+  getGameButtonText
 } from '@/lib/gameUtils';
 import Icon, { Users, Trophy, Star } from '@/components/ui/Icon';
+import { useTranslations } from 'next-intl';
 
 export default function GameCard({ game, onPlay, className = '' }: GameCardProps) {
+  const t = useTranslations('gameData');
+  const tStatus = useTranslations('games.status');
+  const tDifficulty = useTranslations('games.difficulty');
+  
   const handlePlayClick = () => {
     if (game.status === 'available' && onPlay) {
       onPlay(game.id);
@@ -35,14 +38,14 @@ export default function GameCard({ game, onPlay, className = '' }: GameCardProps
         <div className="flex items-start justify-between mb-3">
           <div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
-              {game.name}
+              {t(`${game.name}.name`)}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-300">
-              {game.description}
+              {t(`${game.name}.description`)}
             </p>
           </div>
-          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(game.status)}`}>
-            {getStatusText(game.status)}
+          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getGameStatusClass(game.status)}`}>
+            {tStatus(getGameButtonText(game.status))}
           </span>
         </div>
 
@@ -51,26 +54,30 @@ export default function GameCard({ game, onPlay, className = '' }: GameCardProps
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-1">
               <Icon icon={Users} size="sm" />
-              <span>{formatPlayerCount(game.players)}</span>
+              <span>{game.players}</span>
             </div>
             <div className="flex items-center space-x-1">
               <Icon icon={Trophy} size="sm" />
-              <span className={getDifficultyColor(game.difficulty)}>{game.difficulty}</span>
+              <span className={getDifficultyClass(game.difficulty)}>{tDifficulty(game.difficulty.toLowerCase())}</span>
             </div>
           </div>
           <div className="flex items-center space-x-1">
             <Icon icon={Star} size="sm" />
-            <span>{formatRating(game.rating)}</span>
+            <span>{game.rating}</span>
           </div>
         </div>
 
         {/* Action Button */}
         <button
           onClick={handlePlayClick}
-          className={getGameButtonClasses(game.status)}
+          className={`w-full px-4 py-2 rounded-md font-medium transition-colors duration-200 ${
+            game.status === 'available'
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
           disabled={game.status !== 'available'}
         >
-          {getGameButtonText(game.status)}
+          {tStatus(getGameButtonText(game.status))}
         </button>
       </div>
     </div>

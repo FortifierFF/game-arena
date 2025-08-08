@@ -8,10 +8,11 @@
 
 import { useState } from 'react';
 import { Game } from '@/types/game';
-import { gameCategories } from '@/data/games';
+import { useTranslatedGames } from '@/hooks/useTranslatedGames';
 import { GamesHero, CategoryFilter, GamesGrid } from '@/components/games';
 
 export default function GamesPage() {
+  const { gameCategories } = useTranslatedGames();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const filteredCategories = selectedCategory === 'all' 

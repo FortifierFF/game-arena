@@ -1,15 +1,31 @@
 /**
  * Game Utilities
  * 
- * Utility functions for game-related operations
+ * Utility functions for game data and status handling
  */
 
-import { GameStatus, GameDifficulty } from '@/types/game';
+import { GameStatus } from '@/types/game';
 
 /**
- * Get CSS classes for game status badge
+ * Get button text based on game status
  */
-export const getStatusColor = (status: GameStatus): string => {
+export const getGameButtonText = (status: GameStatus): string => {
+  switch (status) {
+    case 'available':
+      return 'playNow';
+    case 'coming-soon':
+      return 'comingSoon';
+    case 'maintenance':
+      return 'underMaintenance';
+    default:
+      return 'unavailable';
+  }
+};
+
+/**
+ * Get CSS class for game status
+ */
+export const getGameStatusClass = (status: GameStatus): string => {
   switch (status) {
     case 'available':
       return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
@@ -23,20 +39,20 @@ export const getStatusColor = (status: GameStatus): string => {
 };
 
 /**
- * Get CSS classes for difficulty level
+ * Get difficulty class for styling
  */
-export const getDifficultyColor = (difficulty: GameDifficulty): string => {
-  switch (difficulty) {
-    case 'Easy':
-      return 'text-green-600 dark:text-green-400';
-    case 'Medium':
-      return 'text-yellow-600 dark:text-yellow-400';
-    case 'Hard':
-      return 'text-red-600 dark:text-red-400';
-    case 'Expert':
-      return 'text-purple-600 dark:text-purple-400';
+export const getDifficultyClass = (difficulty: string): string => {
+  switch (difficulty.toLowerCase()) {
+    case 'easy':
+      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2';
+    case 'medium':
+      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 px-2';
+    case 'hard':
+      return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 px-2';
+    case 'expert':
+      return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 px-2';
     default:
-      return 'text-gray-600 dark:text-gray-400';
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 px-2';
   }
 };
 
@@ -70,22 +86,6 @@ export const getGameButtonClasses = (status: GameStatus): string => {
       return `${baseClasses} bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400 cursor-not-allowed`;
     default:
       return `${baseClasses} bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400 cursor-not-allowed`;
-  }
-};
-
-/**
- * Get button text based on game status
- */
-export const getGameButtonText = (status: GameStatus): string => {
-  switch (status) {
-    case 'available':
-      return 'Play Now';
-    case 'coming-soon':
-      return 'Coming Soon';
-    case 'maintenance':
-      return 'Under Maintenance';
-    default:
-      return 'Unavailable';
   }
 };
 

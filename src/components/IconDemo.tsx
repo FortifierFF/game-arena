@@ -4,6 +4,8 @@
  * Demonstrates the icon system usage
  */
 
+'use client';
+
 import Icon, { 
   Home, 
   Gamepad2, 
@@ -22,83 +24,86 @@ import Icon, {
   Heart,
   Star,
 } from '@/components/ui/Icon';
+import { useTranslations } from 'next-intl';
 
 export default function IconDemo() {
+  const t = useTranslations('demo.iconSystem');
+  
   return (
     <div className="p-6 space-y-8">
       <div>
-        <h2 className="text-2xl font-bold mb-4">Icon System Demo</h2>
+        <h2 className="text-2xl font-bold mb-4">{t('title')}</h2>
         <p className="text-gray-600 mb-6">
-          Consistent icon system using Lucide React with standardized sizes and styling.
+          {t('description')}
         </p>
       </div>
 
       {/* Size Examples */}
       <div>
-        <h3 className="text-lg font-semibold mb-3">Icon Sizes</h3>
+        <h3 className="text-lg font-semibold mb-3">{t('sizes.title')}</h3>
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <Icon icon={Home} size="xs" />
-            <span className="text-sm">xs</span>
+            <span className="text-sm">{t('sizes.xs')}</span>
           </div>
           <div className="flex items-center space-x-2">
             <Icon icon={Home} size="sm" />
-            <span className="text-sm">sm</span>
+            <span className="text-sm">{t('sizes.sm')}</span>
           </div>
           <div className="flex items-center space-x-2">
             <Icon icon={Home} size="md" />
-            <span className="text-sm">md</span>
+            <span className="text-sm">{t('sizes.md')}</span>
           </div>
           <div className="flex items-center space-x-2">
             <Icon icon={Home} size="lg" />
-            <span className="text-sm">lg</span>
+            <span className="text-sm">{t('sizes.lg')}</span>
           </div>
           <div className="flex items-center space-x-2">
             <Icon icon={Home} size="xl" />
-            <span className="text-sm">xl</span>
+            <span className="text-sm">{t('sizes.xl')}</span>
           </div>
           <div className="flex items-center space-x-2">
             <Icon icon={Home} size="2xl" />
-            <span className="text-sm">2xl</span>
+            <span className="text-sm">{t('sizes.2xl')}</span>
           </div>
         </div>
       </div>
 
       {/* Color Examples */}
       <div>
-        <h3 className="text-lg font-semibold mb-3">Icon Colors</h3>
+        <h3 className="text-lg font-semibold mb-3">{t('colors.title')}</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="flex items-center space-x-2 p-3 bg-gray-100 rounded-lg">
             <Icon icon={Trophy} size="lg" className="text-yellow-500" />
-            <span>text-yellow-500</span>
+            <span>{t('colors.yellow')}</span>
           </div>
           <div className="flex items-center space-x-2 p-3 bg-gray-100 rounded-lg">
             <Icon icon={Zap} size="lg" className="text-blue-600" />
-            <span>text-blue-600</span>
+            <span>{t('colors.blue')}</span>
           </div>
           <div className="flex items-center space-x-2 p-3 bg-gray-100 rounded-lg">
             <Icon icon={Heart} size="lg" className="text-red-500" />
-            <span>text-red-500</span>
+            <span>{t('colors.red')}</span>
           </div>
           <div className="flex items-center space-x-2 p-3 bg-gray-100 rounded-lg">
             <Icon icon={Shield} size="lg" className="text-green-600" />
-            <span>text-green-600</span>
+            <span>{t('colors.green')}</span>
           </div>
           <div className="flex items-center space-x-2 p-3 bg-gray-100 rounded-lg">
             <Icon icon={Crown} size="lg" className="text-purple-600" />
-            <span>text-purple-600</span>
+            <span>{t('colors.purple')}</span>
           </div>
           <div className="flex items-center space-x-2 p-3 bg-gray-100 rounded-lg">
             <Icon icon={Target} size="lg" className="text-orange-500" />
-            <span>text-orange-500</span>
+            <span>{t('colors.orange')}</span>
           </div>
           <div className="flex items-center space-x-2 p-3 bg-gray-100 rounded-lg">
             <Icon icon={Sword} size="lg" className="text-gray-700" />
-            <span>text-gray-700</span>
+            <span>{t('colors.gray')}</span>
           </div>
           <div className="flex items-center space-x-2 p-3 bg-gray-100 rounded-lg">
             <Icon icon={Star} size="lg" className="text-pink-500" />
-            <span>text-pink-500</span>
+            <span>{t('colors.pink')}</span>
           </div>
         </div>
       </div>
@@ -158,7 +163,7 @@ export default function IconDemo() {
 
       {/* Navigation Icons */}
       <div>
-        <h3 className="text-lg font-semibold mb-3">Navigation Icons</h3>
+        <h3 className="text-lg font-semibold mb-3">{t('navigation.title')}</h3>
         <div className="flex items-center space-x-4">
           <Icon icon={Home} size="md" className="text-gray-600 hover:text-gray-900" />
           <Icon icon={Settings} size="md" className="text-gray-600 hover:text-gray-900" />
@@ -171,7 +176,7 @@ export default function IconDemo() {
 
       {/* Usage Example */}
       <div>
-        <h3 className="text-lg font-semibold mb-3">Usage Example</h3>
+        <h3 className="text-lg font-semibold mb-3">{t('usage.title')}</h3>
         <div className="bg-gray-50 p-4 rounded-lg">
           <pre className="text-sm text-gray-700">
 {`import Icon, { Home, Trophy } from '@/components/ui/Icon';

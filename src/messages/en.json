@@ -1,0 +1,116 @@
+{
+  "navigation": {
+    "home": "Home",
+    "games": "Games"
+  },
+  "homePage": {
+    "hero": {
+      "title": "Welcome to Game Arena",
+      "description": "Discover and play amazing games in a modern, social gaming platform"
+    },
+    "games": {
+      "title": "Featured Games",
+      "description": "Explore our collection of carefully curated games"
+    },
+    "demo": {
+      "title": "Platform Features",
+      "description": "Experience the power of our modern gaming platform"
+    },
+    "cta": {
+      "title": "Ready to Play?",
+      "description": "Join thousands of players and start your gaming journey today",
+      "button": "Get Started"
+    }
+  },
+  "games": {
+    "hero": {
+      "title": "Game Collection",
+      "description": "Explore our diverse collection of games across multiple categories"
+    },
+    "filter": {
+      "allGames": "All Games"
+    },
+    "status": {
+      "playNow": "Play Now",
+      "comingSoon": "Coming Soon",
+      "maintenance": "Maintenance"
+    },
+    "difficulty": {
+      "easy": "Easy",
+      "medium": "Medium", 
+      "hard": "Hard"
+    }
+  },
+  "gameData": {
+    "chess": {
+      "name": "Chess",
+      "description": "Classic strategy game of kings and queens"
+    },
+    "checkers": {
+      "name": "Checkers",
+      "description": "Simple yet strategic board game"
+    },
+    "solitaire": {
+      "name": "Solitaire",
+      "description": "Relaxing single-player card game"
+    },
+    "belot": {
+      "name": "Belot",
+      "description": "Traditional Bulgarian card game"
+    },
+    "sudoku": {
+      "name": "Sudoku",
+      "description": "Logic puzzle with numbers"
+    }
+  },
+  "categories": {
+    "boardGames": {
+      "name": "Board Games",
+      "description": "Classic tabletop games for strategic thinking"
+    },
+    "cardGames": {
+      "name": "Card Games",
+      "description": "Exciting card-based games for all ages"
+    },
+    "puzzleGames": {
+      "name": "Puzzle Games",
+      "description": "Brain-teasing puzzles and logic games"
+    }
+  },
+  "demo": {
+    "iconSystem": {
+      "title": "Icon System Demo",
+      "description": "Explore our flexible icon system with different sizes and colors",
+      "sizes": {
+        "title": "Icon Sizes",
+        "sm": "Small",
+        "md": "Medium",
+        "lg": "Large",
+        "xl": "Extra Large"
+      },
+      "colors": {
+        "title": "Icon Colors",
+        "primary": "Primary",
+        "secondary": "Secondary",
+        "success": "Success",
+        "danger": "Danger",
+        "warning": "Warning"
+      },
+      "navigation": {
+        "title": "Navigation Icons"
+      },
+      "usage": {
+        "title": "Usage Example"
+      }
+    }
+  },
+  "footer": {
+    "copyright": "© 2024 Game Arena. All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service"
+  },
+  "common": {
+    "login": "Login",
+    "learnMore": "Learn More"
+  }
+} 

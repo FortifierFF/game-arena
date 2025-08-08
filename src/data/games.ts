@@ -12,8 +12,8 @@ export const games: Game[] = [
   // Board Games
   {
     id: 'chess',
-    name: 'Chess',
-    description: 'The ultimate game of strategy. Challenge players worldwide in classic chess matches.',
+    name: 'chess',
+    description: 'chess',
     icon: '♟️',
     players: '2',
     difficulty: 'Hard',
@@ -22,12 +22,12 @@ export const games: Game[] = [
     status: 'available',
     categoryId: 'board-games',
     tags: ['strategy', 'classic', 'competitive'],
-    estimatedPlayTime: '10-60 min',
+    estimatedPlayTime: '10-60',
   },
   {
     id: 'checkers',
-    name: 'Checkers',
-    description: 'Classic checkers with modern twists. Jump, capture, and crown your way to victory.',
+    name: 'checkers',
+    description: 'checkers',
     icon: '🔴',
     players: '2',
     difficulty: 'Medium',
@@ -36,14 +36,14 @@ export const games: Game[] = [
     status: 'available',
     categoryId: 'board-games',
     tags: ['strategy', 'classic', 'simple'],
-    estimatedPlayTime: '5-30 min',
+    estimatedPlayTime: '5-30',
   },
 
   // Card Games
   {
     id: 'solitaire',
-    name: 'Solitaire',
-    description: 'Relax and unwind with classic solitaire. Multiple variants available.',
+    name: 'solitaire',
+    description: 'solitaire',
     icon: '🃏',
     players: '1',
     difficulty: 'Easy',
@@ -52,12 +52,12 @@ export const games: Game[] = [
     status: 'available',
     categoryId: 'card-games',
     tags: ['relaxing', 'single-player', 'puzzle'],
-    estimatedPlayTime: '5-20 min',
+    estimatedPlayTime: '5-20',
   },
   {
     id: 'belot',
-    name: 'Belot',
-    description: 'The classic Bulgarian card game. Team up and compete for the highest score.',
+    name: 'belot',
+    description: 'belot',
     icon: '🃏',
     players: '4',
     difficulty: 'Hard',
@@ -66,14 +66,14 @@ export const games: Game[] = [
     status: 'coming-soon',
     categoryId: 'card-games',
     tags: ['team', 'competitive', 'traditional'],
-    estimatedPlayTime: '20-45 min',
+    estimatedPlayTime: '20-45',
   },
 
   // Puzzle Games
   {
     id: 'sudoku',
-    name: 'Sudoku',
-    description: 'Classic number puzzle game. Fill the grid with numbers following the rules.',
+    name: 'sudoku',
+    description: 'sudoku',
     icon: '🔢',
     players: '1',
     difficulty: 'Medium',
@@ -82,7 +82,7 @@ export const games: Game[] = [
     status: 'coming-soon',
     categoryId: 'puzzle-games',
     tags: ['puzzle', 'logic', 'numbers'],
-    estimatedPlayTime: '10-30 min',
+    estimatedPlayTime: '10-30',
   },
 ];
 
@@ -90,24 +90,24 @@ export const games: Game[] = [
 export const gameCategories: GameCategory[] = [
   {
     id: 'board-games',
-    name: 'Board Games',
-    description: 'Classic strategy and tactical games',
+    name: 'boardGames',
+    description: 'boardGames',
     icon: Gamepad2,
     games: games.filter(game => game.categoryId === 'board-games'),
     color: 'blue',
   },
   {
     id: 'card-games',
-    name: 'Card Games',
-    description: 'Traditional and modern card games',
+    name: 'cardGames',
+    description: 'cardGames',
     icon: Heart,
     games: games.filter(game => game.categoryId === 'card-games'),
     color: 'green',
   },
   {
     id: 'puzzle-games',
-    name: 'Puzzle Games',
-    description: 'Brain teasers and logic puzzles',
+    name: 'puzzleGames',
+    description: 'puzzleGames',
     icon: Target,
     games: games.filter(game => game.categoryId === 'puzzle-games'),
     color: 'purple',

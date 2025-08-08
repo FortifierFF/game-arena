@@ -4,9 +4,12 @@
  * Navigation links with flexible structure
  */
 
+'use client';
+
 import Link from 'next/link';
 import Icon, { Gamepad2, Home } from '@/components/ui/Icon';
 import { LucideIcon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface NavLink {
   href: string;
@@ -19,23 +22,25 @@ interface NavBarLinksProps {
   links?: NavLink[];
 }
 
-const defaultLinks: NavLink[] = [
-  {
-    href: '/',
-    label: 'Home',
-    icon: Home,
-  },
-  {
-    href: '/games',
-    label: 'Games',
-    icon: Gamepad2,
-  },
-];
+export default function NavBarLinks({ className }: NavBarLinksProps) {
+  const t = useTranslations('navigation');
+  
+  const defaultLinks: NavLink[] = [
+    {
+      href: '/',
+      label: t('home'),
+      icon: Home,
+    },
+    {
+      href: '/games',
+      label: t('games'),
+      icon: Gamepad2,
+    },
+  ];
 
-export default function NavBarLinks({ className, links = defaultLinks }: NavBarLinksProps) {
   return (
     <nav className={`flex items-center space-x-8 ${className}`}>
-      {links.map((link) => {
+      {defaultLinks.map((link) => {
         return (
           <Link
             key={link.href}

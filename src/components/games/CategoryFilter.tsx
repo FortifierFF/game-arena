@@ -4,7 +4,10 @@
  * Filter buttons for game categories
  */
 
+'use client';
+
 import { GameCategory } from '@/types/game';
+import { useTranslations } from 'next-intl';
 
 interface CategoryFilterProps {
   categories: GameCategory[];
@@ -19,6 +22,8 @@ export default function CategoryFilter({
   onCategoryChange, 
   className = '' 
 }: CategoryFilterProps) {
+  const t = useTranslations('games');
+  
   return (
     <div className={`flex flex-wrap justify-center gap-4 mb-12 ${className}`}>
       <button
@@ -29,7 +34,7 @@ export default function CategoryFilter({
             : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
         }`}
       >
-        All Games
+        {t('filter.allGames')}
       </button>
       {categories.map((category) => (
         <button
