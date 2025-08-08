@@ -3,7 +3,7 @@ import {notFound} from 'next/navigation';
 import {routing} from '@/i18n/routing';
 import { Geist, Geist_Mono } from 'next/font/google';
 import '../globals.css';
-import { NavBar } from '@/components/layout';
+import { LayoutWrapper } from '@/components/layout';
 import { ThemeProvider } from '@/components/providers';
 
 const geistSans = Geist({
@@ -34,8 +34,9 @@ export default async function LocaleLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <NextIntlClientProvider>
           <ThemeProvider>
-            <NavBar />
-            {children}
+            <LayoutWrapper>
+              {children}
+            </LayoutWrapper>
           </ThemeProvider>
         </NextIntlClientProvider>
       </body>
