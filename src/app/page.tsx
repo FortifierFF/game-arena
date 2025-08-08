@@ -1,6 +1,7 @@
 'use client';
 
 import IconDemo from '@/components/IconDemo';
+import Image from 'next/image';
 
 export default function Home() {
   return (
@@ -8,8 +9,16 @@ export default function Home() {
       {/* Hero Section */}
       <section className='relative px-6 py-24 sm:px-6 sm:py-32 lg:px-8'>
         <div className='mx-auto max-w-2xl text-center'>
-          <h1 className='text-4xl font-bold tracking-tight text-white sm:text-6xl'>
-            🎮 Game Arena
+          <h1 className='text-4xl font-bold tracking-tight text-white sm:text-6xl flex items-center justify-center gap-[40px]'>
+            <Image
+              src="/images/logoGarena-transp.png"
+              alt="Game Arena Logo"
+              width={100}
+              height={100}
+              className="h-auto w-auto"
+              priority
+            />
+             <span>Game Arena</span>
           </h1>
           <p className='mt-6 text-lg leading-8 text-gray-300'>
             The ultimate gaming platform where strategy meets competition. Challenge players
