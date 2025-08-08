@@ -3,10 +3,11 @@
 /**
  * NavBar Actions Component
  * 
- * Actions area for login button and future items
+ * Actions area for login button and theme toggle
  */
 
 import Icon, { User } from '@/components/ui/Icon';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 interface NavBarActionsProps {
   className?: string;
@@ -22,6 +23,7 @@ export default function NavBarActions({ className, onLoginClick }: NavBarActions
 
   return (
     <div className={`flex items-center space-x-4 ${className}`}>
+      <ThemeToggle />
       <button
         onClick={handleLoginClick}
         className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
