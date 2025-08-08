@@ -1,6 +1,7 @@
 'use client';
 
 import IconDemo from '@/components/IconDemo';
+import LoaderDemo from '@/components/ui/LoaderDemo';
 import Image from 'next/image';
 
 export default function Home() {
@@ -133,6 +134,22 @@ export default function Home() {
             </p>
           </div>
           <IconDemo />
+        </div>
+      </section>
+
+      {/* Loader Demo Section */}
+      <section className='py-24 sm:py-32 bg-gray-50 dark:bg-gray-800'>
+        <div className='mx-auto max-w-7xl px-6 lg:px-8'>
+          <div className='mx-auto max-w-2xl lg:text-center mb-12'>
+            <h2 className='text-base font-semibold leading-7 text-blue-600 dark:text-indigo-400'>Loading System</h2>
+            <p className='mt-2 text-3xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl'>
+              Futuristic Loader Components
+            </p>
+            <p className='mt-6 text-lg leading-8 text-gray-600 dark:text-gray-300'>
+              Our custom loading components with multiple variants and smooth animations.
+            </p>
+          </div>
+          <LoaderDemo />
         </div>
       </section>
 
