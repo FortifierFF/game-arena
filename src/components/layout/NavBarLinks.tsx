@@ -5,7 +5,7 @@
  */
 
 import Link from 'next/link';
-import Icon, { Gamepad2 } from '@/components/ui/Icon';
+import Icon, { Gamepad2, Home } from '@/components/ui/Icon';
 import { LucideIcon } from 'lucide-react';
 
 interface NavLink {
@@ -20,6 +20,11 @@ interface NavBarLinksProps {
 }
 
 const defaultLinks: NavLink[] = [
+  {
+    href: '/',
+    label: 'Home',
+    icon: Home,
+  },
   {
     href: '/games',
     label: 'Games',
