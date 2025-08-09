@@ -7,6 +7,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Game } from '@/types/game';
 import { useTranslatedGames } from '@/hooks/useTranslatedGames';
 import { GamesHero, CategoryFilter, GamesGrid } from '@/components/games';
@@ -14,6 +15,7 @@ import { GamesHero, CategoryFilter, GamesGrid } from '@/components/games';
 export default function GamesPage() {
   const { gameCategories } = useTranslatedGames();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const router = useRouter();
 
   const filteredCategories = selectedCategory === 'all' 
     ? gameCategories 
@@ -21,7 +23,29 @@ export default function GamesPage() {
 
   const handleGameSelect = (game: Game) => {
     console.log('Selected game:', game);
-    // TODO: Implement game selection logic
+    
+    // Navigate to the appropriate game page based on game ID
+    switch (game.id) {
+      case 'chess':
+        router.push('/chess');
+        break;
+      case 'checkers':
+        router.push('/checkers');
+        break;
+      case 'solitaire':
+        router.push('/solitaire');
+        break;
+      case 'belot':
+        router.push('/belot');
+        break;
+      case 'sudoku':
+        router.push('/sudoku');
+        break;
+      default:
+        console.log('Game not implemented yet:', game.id);
+        // You could show a toast notification here
+        break;
+    }
   };
 
   const handleCategoryChange = (categoryId: string) => {
