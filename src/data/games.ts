@@ -18,7 +18,7 @@ export const games: Game[] = [
     players: '2',
     difficulty: 'Hard',
     rating: 4.8,
-    image: '/images/chess-preview.jpg',
+    image: '/public/images/chess-preview.jpg',
     status: 'available',
     categoryId: 'board-games',
     tags: ['strategy', 'classic', 'competitive'],

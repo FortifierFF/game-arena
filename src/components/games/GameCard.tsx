@@ -14,6 +14,7 @@ import {
 } from '@/lib/gameUtils';
 import Icon, { Users, Trophy, Star } from '@/components/ui/Icon';
 import { useTranslations } from 'next-intl';
+import Image from 'next/image';
 
 export default function GameCard({ game, onPlay, className = '' }: GameCardProps) {
   const t = useTranslations('gameData');
@@ -29,8 +30,8 @@ export default function GameCard({ game, onPlay, className = '' }: GameCardProps
   return (
     <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden ${className}`}>
       {/* Game Image Placeholder */}
-      <div className="h-48 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 flex items-center justify-center">
-        <span className="text-6xl">{game.icon}</span>
+      <div className="h-48 relative bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 flex items-center justify-center">
+        <Image src={game.image} alt={game.name} fill className="object-cover" />
       </div>
       
       <div className="p-6">

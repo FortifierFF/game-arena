@@ -12,9 +12,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useChessGame } from '@/hooks/useChessGame';
 import PromotionPicker, { PromotionPiece } from './PromotionPicker';
+import { MoveLog } from './MoveLog';
 
 export default function ChessBoard() {
-  const { gameState, error, changeDifficulty, resetGame } = useChessGame();
+  const { gameState, error, changeDifficulty, resetGame, logMoveWithPiece, moveLog, getMoveLog } = useChessGame();
 
   // Local game model managed by chess.js for legality + FEN
   const chessRef = useRef(new Chess());
@@ -81,7 +82,25 @@ export default function ChessBoard() {
     const moveParams: { from: string; to: string; promotion?: string } = { from, to };
     if (promo) moveParams.promotion = promo;
     const result = chessRef.current.move(moveParams);
-    if (result) setFen(chessRef.current.fen());
+    if (result) {
+      setFen(chessRef.current.fen());
+      // Log the engine move with piece type from the move result
+      const pieceType = getPieceTypeFromMove(result);
+      logMoveWithPiece(from, to, pieceType);
+    }
+  }
+
+  // Helper function to get piece type from chess.js move result
+  function getPieceTypeFromMove(moveResult: { piece: string }): string {
+    const pieceMap: Record<string, string> = {
+      'p': 'pawn', 'P': 'pawn',
+      'r': 'rook', 'R': 'rook',
+      'n': 'knight', 'N': 'knight',
+      'b': 'bishop', 'B': 'bishop',
+      'q': 'queen', 'Q': 'queen',
+      'k': 'king', 'K': 'king'
+    };
+    return pieceMap[moveResult.piece] || 'unknown';
   }
 
   // Human makes a move (sync return for library)
@@ -99,55 +118,49 @@ export default function ChessBoard() {
     const targetRank = (targetSquare || '').slice(1);
     const needsPromotion = isPawn && ((piece.color === 'w' && targetRank === '8') || (piece.color === 'b' && targetRank === '1'));
 
-    try {
-      if (needsPromotion) {
-        setPendingPromotion({ from: sourceSquare, to: targetSquare });
-        return false;
-      } else {
-        const move = chessRef.current.move({ from: sourceSquare, to: targetSquare });
-        if (!move) return false; // illegal move
+    if (needsPromotion) {
+      setPendingPromotion({ from: sourceSquare, to: targetSquare });
+      return false; // Don't make the move yet
+    }
+
+    // Make the move
+    const result = chessRef.current.move({ from: sourceSquare, to: targetSquare });
+    if (result) {
+      setFen(chessRef.current.fen());
+      // Log the human move with piece type from the move result
+      const pieceType = getPieceTypeFromMove(result);
+      logMoveWithPiece(sourceSquare, targetSquare, pieceType);
+      
+      // If vs engine and it's now black's turn, trigger engine
+      if (!manualMode && chessRef.current.turn() === 'b') {
+        triggerEngine();
       }
-    } catch {
-      return false;
     }
-    setFen(chessRef.current.fen());
-
-    if (chessRef.current.isGameOver()) return true;
-
-    if (manualMode) {
-      // No engine reply in manual mode
-      return true;
-    }
-
-    // Ask engine for reply
-    setThinking(true);
-    sendToEngine('stop');
-    const skillMap: Record<string, number> = { beginner: 0, easy: 5, medium: 10, hard: 15, expert: 20, master: 20 };
-    const timeMap: Record<string, number> = { beginner: 400, easy: 700, medium: 1200, hard: 1800, expert: 2500, master: 3500 };
-    sendToEngine('ucinewgame');
-    sendToEngine(`setoption name Skill Level value ${skillMap[gameState.difficulty] ?? 10}`);
-    sendToEngine('setoption name MultiPV value 1');
-    sendToEngine(`position fen ${chessRef.current.fen()}`);
-    sendToEngine(`go movetime ${timeMap[gameState.difficulty] ?? 1200}`);
-
-    return true;
+    return result !== null;
   };
 
   function confirmPromotion(piece: PromotionPiece | null) {
-    const pending = pendingPromotion;
+    if (!pendingPromotion) return;
+    const { from, to } = pendingPromotion;
     setPendingPromotion(null);
-    if (!pending || !piece) return;
 
-    try {
-      const move = chessRef.current.move({ from: pending.from, to: pending.to, promotion: piece });
-      if (!move) return;
-    } catch {
-      return;
+    if (!piece) return; // Cancelled
+
+    const result = chessRef.current.move({ from, to, promotion: piece });
+    if (result) {
+      setFen(chessRef.current.fen());
+      // Log the promoted move with piece type from the move result
+      const pieceType = getPieceTypeFromMove(result);
+      logMoveWithPiece(from, to, pieceType);
+      
+      // If vs engine and it's now black's turn, trigger engine
+      if (!manualMode && chessRef.current.turn() === 'b') {
+        triggerEngine();
+      }
     }
-    setFen(chessRef.current.fen());
+  }
 
-    if (chessRef.current.isGameOver()) return;
-
+  function triggerEngine() {
     if (manualMode) {
       return;
     }
@@ -170,11 +183,21 @@ export default function ChessBoard() {
           <CardTitle className="flex items-center justify-between">
             <span>♔ Chess vs Stockfish</span>
             <div className="flex items-center gap-3 text-sm">
+              {/* Turn indicator */}
               <span className="text-gray-600 dark:text-gray-300">
-                {thinking ? 'Engine thinking…' : 'Your turn'}
+                {thinking ? 'Engine thinking…' : (chessRef.current.turn() === 'w' ? 'Your turn' : 'Engine turn')}
               </span>
+              
+              {/* FEN box moved to top right */}
+              
             </div>
           </CardTitle>
+          <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg mt-2">
+            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 mr-2">FEN:</span>
+            <span className="text-xs font-mono break-all bg-white dark:bg-gray-900 px-2 py-1 rounded border">
+              {fen}
+            </span>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -246,10 +269,19 @@ export default function ChessBoard() {
               <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
                 <h3 className="font-semibold mb-2">Actions</h3>
                 <div className="flex gap-2">
-                  <Button onClick={() => { chessRef.current = new Chess(); setFen(chessRef.current.fen()); }} size="sm">
+                  <Button onClick={() => {
+                    chessRef.current = new Chess();
+                    setFen(chessRef.current.fen());
+                    // Clear move log when starting new game
+                    resetGame(); // Calls resetGame from hook
+                  }} size="sm">
                     New Game
                   </Button>
-                  <Button variant="outline" size="sm" onClick={resetGame}>Reset</Button>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    chessRef.current = new Chess();
+                    setFen(chessRef.current.fen());
+                    resetGame(); // Calls resetGame from hook
+                  }}>Reset</Button>
                 </div>
               </div>
 
@@ -259,12 +291,8 @@ export default function ChessBoard() {
                 </div>
               )}
 
-              <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
-                <h3 className="font-semibold mb-2">FEN</h3>
-                <p className="text-xs font-mono break-all bg-white dark:bg-gray-900 p-2 rounded border">
-                  {fen}
-                </p>
-              </div>
+                               {/* MoveLog component replaces the FEN section */}
+                 <MoveLog moveLog={moveLog} getMoveLog={getMoveLog} />
             </div>
           </div>
         </CardContent>
