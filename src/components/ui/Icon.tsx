@@ -53,6 +53,7 @@ export {
   Menu,
   X,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Play,
   Pause,
@@ -69,6 +70,8 @@ export {
   Zap,
   Shield,
   Sword,
+  SkipBack,
+  SkipForward,
 } from 'lucide-react'; 
 
 

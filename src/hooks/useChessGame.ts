@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ChessGameState, ChessDifficulty, ChessEngineResponse } from '@/types/chess';
 
 // Initial FEN for starting position
@@ -38,6 +38,23 @@ export function useChessGame() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [moveLog, setMoveLog] = useState<ChessMove[]>([]); // Track all moves
+  
+  // Move history for navigation (FEN positions after each move)
+  const [fenHistory, setFenHistory] = useState<string[]>([INITIAL_FEN]);
+  const [currentMoveIndex, setCurrentMoveIndex] = useState(0); // Index in fenHistory
+
+  // Initialize FEN history with current game state
+  const initializeFenHistory = useCallback(() => {
+    setFenHistory([gameState.fen]);
+    setCurrentMoveIndex(0);
+  }, [gameState.fen]);
+
+  // Initialize FEN history when game state changes
+  useEffect(() => {
+    if (fenHistory.length === 1 && fenHistory[0] === INITIAL_FEN && gameState.fen !== INITIAL_FEN) {
+      initializeFenHistory();
+    }
+  }, [gameState.fen, fenHistory, initializeFenHistory]);
 
   // Get piece type from FEN character
   const getPieceType = useCallback((fenChar: string): string => {
@@ -198,8 +215,8 @@ export function useChessGame() {
   }, [getPieceAtSquare, getPieceType]);
 
   // Move logging function that takes piece type directly
-  const logMoveWithPiece = useCallback((from: string, to: string, pieceType: string) => {
-    console.log('logMoveWithPiece called:', { from, to, pieceType });
+  const logMoveWithPiece = useCallback((from: string, to: string, pieceType: string, newFen?: string) => {
+    console.log('logMoveWithPiece called:', { from, to, pieceType, newFen });
     
     // Create human-readable move notation
     const moveNotation = `${from}-${to}`;
@@ -222,12 +239,141 @@ export function useChessGame() {
       return newLog;
     });
     
+    // Track FEN history for navigation
+    if (newFen) {
+      setFenHistory(prev => {
+        console.log('Updating FEN history. Current:', prev, 'Adding:', newFen);
+        // Always add the new FEN to the end of history
+        const newHistory = [...prev, newFen];
+        console.log('New FEN history:', newHistory);
+        return newHistory;
+      });
+      setCurrentMoveIndex(prev => {
+        const newIndex = prev + 1;
+        console.log('Updated current move index to:', newIndex);
+        return newIndex;
+      });
+    }
+    
     // Update the last move in game state
     setGameState(prev => ({
       ...prev,
       lastMove: moveNotation,
     }));
   }, []);
+
+  // Navigate to previous move
+  const goBack = useCallback(() => {
+    console.log('goBack called. Current index:', currentMoveIndex, 'FEN history:', fenHistory);
+    if (currentMoveIndex > 0) {
+      const newIndex = currentMoveIndex - 1;
+      setCurrentMoveIndex(newIndex);
+      const previousFen = fenHistory[newIndex];
+      console.log('Going back to index:', newIndex, 'FEN:', previousFen);
+      if (previousFen) {
+        setGameState(prev => ({
+          ...prev,
+          fen: previousFen,
+          isWhiteTurn: newIndex % 2 === 0, // Even index = white's turn
+        }));
+        return previousFen;
+      }
+    }
+    return null;
+  }, [currentMoveIndex, fenHistory]);
+
+  // Navigate to next move
+  const goForward = useCallback(() => {
+    console.log('goForward called. Current index:', currentMoveIndex, 'FEN history:', fenHistory);
+    if (currentMoveIndex < fenHistory.length - 1) {
+      const newIndex = currentMoveIndex + 1;
+      setCurrentMoveIndex(newIndex);
+      const nextFen = fenHistory[newIndex];
+      console.log('Going forward to index:', newIndex, 'FEN:', nextFen);
+      if (nextFen) {
+        setGameState(prev => ({
+          ...prev,
+          fen: nextFen,
+          isWhiteTurn: newIndex % 2 === 0, // Even index = white's turn
+        }));
+        return nextFen;
+      }
+    }
+    return null;
+  }, [currentMoveIndex, fenHistory]);
+
+  // Check if navigation is possible
+  const canGoBack = currentMoveIndex > 0;
+  const canGoForward = currentMoveIndex < fenHistory.length - 1;
+
+  // Get current FEN for external use
+  const getCurrentFen = useCallback(() => {
+    return fenHistory[currentMoveIndex] || INITIAL_FEN;
+  }, [currentMoveIndex, fenHistory]);
+
+  // Debug functions to expose internal state
+  const getFenHistory = useCallback(() => fenHistory, [fenHistory]);
+  const getCurrentMoveIndex = useCallback(() => currentMoveIndex, [currentMoveIndex]);
+
+  // Debug function to test navigation
+  const debugNavigation = useCallback(() => {
+    console.log('=== NAVIGATION DEBUG ===');
+    console.log('fenHistory:', fenHistory);
+    console.log('currentMoveIndex:', currentMoveIndex);
+    console.log('canGoBack:', canGoBack);
+    console.log('canGoForward:', canGoForward);
+    console.log('moveLog length:', moveLog.length);
+    console.log('Current gameState.fen:', gameState.fen);
+    
+    // Test going back one step
+    if (canGoBack) {
+      console.log('Testing goBack...');
+      const prevFen = fenHistory[currentMoveIndex - 1];
+      console.log('Previous FEN would be:', prevFen);
+      console.log('Is this different from current?', prevFen !== gameState.fen);
+    }
+    
+    // Test going forward one step
+    if (canGoForward) {
+      console.log('Testing goForward...');
+      const nextFen = fenHistory[currentMoveIndex + 1];
+      console.log('Next FEN would be:', nextFen);
+      console.log('Is this different from current?', nextFen !== gameState.fen);
+    }
+  }, [fenHistory, currentMoveIndex, canGoBack, canGoForward, moveLog.length, gameState.fen]);
+
+  // Function to manually add current FEN to history
+  const addCurrentFenToHistory = useCallback(() => {
+    const currentFen = gameState.fen;
+    console.log('Manually adding current FEN to history:', currentFen);
+    
+    setFenHistory(prev => {
+      // Only add if it's not already the last entry
+      if (prev.length === 0 || prev[prev.length - 1] !== currentFen) {
+        const newHistory = [...prev, currentFen];
+        console.log('Updated FEN history:', newHistory);
+        return newHistory;
+      }
+      return prev;
+    });
+    
+    setCurrentMoveIndex(prev => {
+      const newIndex = prev + 1;
+      console.log('Updated current move index to:', newIndex);
+      return newIndex;
+    });
+  }, [gameState.fen]);
+
+  // Sync board to current position
+  const syncBoard = useCallback(() => {
+    const currentFen = getCurrentFen();
+    setGameState(prev => ({
+      ...prev,
+      fen: currentFen,
+      isWhiteTurn: currentMoveIndex % 2 === 0,
+    }));
+    return currentFen;
+  }, [getCurrentFen, currentMoveIndex]);
 
   // Change difficulty
   const changeDifficulty = useCallback((difficulty: ChessDifficulty) => {
@@ -247,6 +393,8 @@ export function useChessGame() {
       isGameOver: false,
     });
     setMoveLog([]); // Clear move log
+    setFenHistory([INITIAL_FEN]); // Reset FEN history
+    setCurrentMoveIndex(0); // Reset to start
     setError(null);
   }, [gameState.difficulty]);
 
@@ -270,5 +418,15 @@ export function useChessGame() {
     logMoveWithPiece,
     changeDifficulty,
     resetGame,
+    goBack,
+    goForward,
+    canGoBack,
+    canGoForward,
+    getCurrentFen,
+    syncBoard,
+    getFenHistory,
+    getCurrentMoveIndex,
+    debugNavigation,
+    addCurrentFenToHistory,
   };
 } 

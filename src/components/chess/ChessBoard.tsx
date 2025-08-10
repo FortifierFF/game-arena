@@ -13,9 +13,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useChessGame } from '@/hooks/useChessGame';
 import PromotionPicker, { PromotionPiece } from './PromotionPicker';
 import { MoveLog } from './MoveLog';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import Icon from '@/components/ui/Icon';
 
 export default function ChessBoard() {
-  const { gameState, error, changeDifficulty, resetGame, logMoveWithPiece, moveLog, getMoveLog } = useChessGame();
+  const { gameState, error, changeDifficulty, resetGame, logMoveWithPiece, moveLog, getMoveLog, goBack, goForward, canGoBack, canGoForward } = useChessGame();
 
   // Local game model managed by chess.js for legality + FEN
   const chessRef = useRef(new Chess());
@@ -83,10 +85,11 @@ export default function ChessBoard() {
     if (promo) moveParams.promotion = promo;
     const result = chessRef.current.move(moveParams);
     if (result) {
-      setFen(chessRef.current.fen());
+      const newFen = chessRef.current.fen();
+      setFen(newFen);
       // Log the engine move with piece type from the move result
       const pieceType = getPieceTypeFromMove(result);
-      logMoveWithPiece(from, to, pieceType);
+      logMoveWithPiece(from, to, pieceType, newFen);
     }
   }
 
@@ -126,10 +129,11 @@ export default function ChessBoard() {
     // Make the move
     const result = chessRef.current.move({ from: sourceSquare, to: targetSquare });
     if (result) {
-      setFen(chessRef.current.fen());
+      const newFen = chessRef.current.fen();
+      setFen(newFen);
       // Log the human move with piece type from the move result
       const pieceType = getPieceTypeFromMove(result);
-      logMoveWithPiece(sourceSquare, targetSquare, pieceType);
+      logMoveWithPiece(sourceSquare, targetSquare, pieceType, newFen);
       
       // If vs engine and it's now black's turn, trigger engine
       if (!manualMode && chessRef.current.turn() === 'b') {
@@ -148,10 +152,11 @@ export default function ChessBoard() {
 
     const result = chessRef.current.move({ from, to, promotion: piece });
     if (result) {
-      setFen(chessRef.current.fen());
+      const newFen = chessRef.current.fen();
+      setFen(newFen);
       // Log the promoted move with piece type from the move result
       const pieceType = getPieceTypeFromMove(result);
-      logMoveWithPiece(from, to, pieceType);
+      logMoveWithPiece(from, to, pieceType, newFen);
       
       // If vs engine and it's now black's turn, trigger engine
       if (!manualMode && chessRef.current.turn() === 'b') {
@@ -282,6 +287,42 @@ export default function ChessBoard() {
                     setFen(chessRef.current.fen());
                     resetGame(); // Calls resetGame from hook
                   }}>Reset</Button>
+                  
+                  {/* Navigation buttons */}
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => {
+                      const previousFen = goBack();
+                      if (previousFen) {
+                        // Update the local chess.js board to match the previous position
+                        chessRef.current = new Chess(previousFen);
+                        setFen(previousFen);
+                      }
+                    }}
+                    disabled={!canGoBack}
+                    className="px-2"
+                    title="Go back one move"
+                  >
+                    <Icon icon={ChevronLeft} size="sm" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => {
+                      const nextFen = goForward();
+                      if (nextFen) {
+                        // Update the local chess.js board to match the next position
+                        chessRef.current = new Chess(nextFen);
+                        setFen(nextFen);
+                      }
+                    }}
+                    disabled={!canGoForward}
+                    className="px-2"
+                    title="Go forward one move"
+                  >
+                    <Icon icon={ChevronRight} size="sm" />
+                  </Button>
                 </div>
               </div>
 
