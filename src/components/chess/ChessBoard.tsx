@@ -197,12 +197,6 @@ export default function ChessBoard() {
               
             </div>
           </CardTitle>
-          <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg mt-2">
-            <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 mr-2">FEN:</span>
-            <span className="text-xs font-mono break-all bg-white dark:bg-gray-900 px-2 py-1 rounded border">
-              {fen}
-            </span>
-          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

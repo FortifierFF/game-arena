@@ -1,3 +1,4 @@
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { getSquareColor } from '@/lib/gameUtils';
 import Image from 'next/image';
@@ -13,6 +14,31 @@ interface PromotionPickerProps {
 export default function PromotionPicker({ onSelect, pieceColor, targetSquare }: PromotionPickerProps) {
   // Determine the square color (w for white/light square, b for black/dark square)
   const squareColor = getSquareColor(targetSquare);
+  
+  // State to store the target square element reference
+  const [targetSquareElement, setTargetSquareElement] = React.useState<Element | null>(null);
+  
+  // Find the target square element in the DOM
+  React.useEffect(() => {
+    const findTargetSquare = () => {
+      // Try multiple selectors to find the target square
+      const squareElement = 
+        document.querySelector(`[data-square="${targetSquare}"]`) ||
+        document.querySelector(`[data-testid="square-${targetSquare}"]`) ||
+        document.querySelector(`.square-${targetSquare}`) ||
+        document.querySelector(`[aria-label*="${targetSquare}"]`);
+      
+      if (squareElement) {
+        setTargetSquareElement(squareElement);
+      }
+    };
+    
+    // Find immediately and after a short delay
+    findTargetSquare();
+    const timer = setTimeout(findTargetSquare, 100);
+    
+    return () => clearTimeout(timer);
+  }, [targetSquare]);
   
   // Calculate the position of the target square on the chessboard
   // Chess board is 8x8, each square is roughly 60px (assuming standard chess board size)
@@ -32,6 +58,20 @@ export default function PromotionPicker({ onSelect, pieceColor, targetSquare }: 
   
   const squarePos = getSquarePosition(targetSquare);
   
+  // Get the actual position of the target square element if available
+  const getActualSquarePosition = () => {
+    if (targetSquareElement) {
+      const rect = targetSquareElement.getBoundingClientRect();
+      return {
+        left: rect.left, // Left edge of the square
+        top: rect.top    // Top edge of the square
+      };
+    }
+    return null;
+  };
+  
+  const actualPosition = getActualSquarePosition();
+  
   // Create the image filename pattern: [color-piece][piece][color-square]s
   // Example: wqbs = White queen on black square
   const getImageFilename = (piece: PromotionPiece): string => {
@@ -46,16 +86,14 @@ export default function PromotionPicker({ onSelect, pieceColor, targetSquare }: 
     return `${pieceColor}${pieceMap[piece]}${squareColor}s`;
   };
 
-  console.log(getImageFilename('q'));
-
   return (
     <div className="fixed inset-0 z-50 bg-black/50">
       <div 
         className="absolute bg-white dark:bg-gray-800 rounded-lg p-4 shadow-lg w-80"
         style={{
-          left: `calc(50% - 400px + ${squarePos.left - 40}px)`,
-          top: `calc(50% - 300px + ${squarePos.top + 60}px)`,
-          transform: 'translateX(-50%)'
+          left: actualPosition ? `${actualPosition.left}px` : `calc(50% + ${squarePos.left}px)`,
+          top: actualPosition ? `${actualPosition.top}px` : `calc(50% + ${squarePos.top}px)`,
+          transform: actualPosition ? 'none' : 'translate(-50%, -50%)'
         }}
       >
         {/* Promotion piece options with images */}
