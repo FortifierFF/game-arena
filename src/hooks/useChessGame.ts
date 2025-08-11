@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { ChessGameState, ChessDifficulty, ChessEngineResponse } from '@/types/chess';
 
 // Initial FEN for starting position
@@ -42,6 +42,12 @@ export function useChessGame() {
   // Move history for navigation (FEN positions after each move)
   const [fenHistory, setFenHistory] = useState<string[]>([INITIAL_FEN]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(0); // Index in fenHistory
+
+  // Worker reference for Stockfish engine
+  const workerRef = useRef<Worker | null>(null);
+
+  // Hint state for showing best move
+  const [hint, setHint] = useState<{ from: string; to: string; score: number } | null>(null);
 
   // Initialize FEN history with current game state
   const initializeFenHistory = useCallback(() => {
@@ -364,6 +370,72 @@ export function useChessGame() {
     });
   }, [gameState.fen]);
 
+  // Get hint (best move) from Stockfish
+  const getHint = useCallback(async (): Promise<{ from: string; to: string; score: number } | null> => {
+    console.log('getHint called with FEN:', gameState.fen);
+    
+    if (!workerRef.current) {
+      console.log('Creating new Stockfish worker for hint');
+      try {
+        workerRef.current = new Worker(new URL('../workers/stockfish.worker.ts', import.meta.url));
+        console.log('Worker created successfully:', workerRef.current);
+      } catch (error) {
+        console.error('Failed to create worker:', error);
+        return null;
+      }
+    } else {
+      console.log('Using existing worker:', workerRef.current);
+    }
+
+    return new Promise((resolve) => {
+      const worker = workerRef.current!;
+      console.log('Setting up message handler for worker:', worker);
+      
+      // Set up message handler for this hint request
+      const handleMessage = (event: MessageEvent) => {
+        console.log('Received message from worker:', event.data);
+        const { type, data } = event.data;
+        
+        if (type === 'bestmove') {
+          console.log('Best move received:', data);
+          worker.removeEventListener('message', handleMessage);
+          setHint(data); // Store the hint
+          resolve(data);
+        } else if (type === 'error') {
+          console.error('Stockfish error:', data);
+          worker.removeEventListener('message', handleMessage);
+          setHint(null); // Clear hint on error
+          resolve(null);
+        }
+      };
+
+      worker.addEventListener('message', handleMessage);
+      
+      // Send position to Stockfish
+      const message = {
+        type: 'analyze',
+        fen: gameState.fen,
+        depth: 15, // Analyze to depth 15 for good move quality
+        time: 1000 // Spend up to 1 second analyzing
+      };
+      
+      console.log('Sending message to worker:', message);
+      worker.postMessage(message);
+      
+      // Set a timeout in case the worker doesn't respond
+      setTimeout(() => {
+        console.log('Worker timeout - removing message handler');
+        worker.removeEventListener('message', handleMessage);
+        resolve(null);
+      }, 5000); // 5 second timeout
+    });
+  }, [gameState.fen]);
+
+  // Clear hint when game state changes
+  useEffect(() => {
+    setHint(null);
+  }, [gameState.fen]);
+
   // Sync board to current position
   const syncBoard = useCallback(() => {
     const currentFen = getCurrentFen();
@@ -428,5 +500,7 @@ export function useChessGame() {
     getCurrentMoveIndex,
     debugNavigation,
     addCurrentFenToHistory,
+    hint,
+    getHint,
   };
 } 

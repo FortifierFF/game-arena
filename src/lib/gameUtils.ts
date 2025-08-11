@@ -1,14 +1,5 @@
-/**
- * Game Utilities
- * 
- * Utility functions for game data and status handling
- */
-
 import { GameStatus } from '@/types/game';
 
-/**
- * Get button text based on game status
- */
 export const getGameButtonText = (status: GameStatus): string => {
   switch (status) {
     case 'available':
@@ -22,9 +13,6 @@ export const getGameButtonText = (status: GameStatus): string => {
   }
 };
 
-/**
- * Get CSS class for game status
- */
 export const getGameStatusClass = (status: GameStatus): string => {
   switch (status) {
     case 'available':
@@ -38,9 +26,6 @@ export const getGameStatusClass = (status: GameStatus): string => {
   }
 };
 
-/**
- * Get difficulty class for styling
- */
 export const getDifficultyClass = (difficulty: string): string => {
   switch (difficulty.toLowerCase()) {
     case 'easy':
@@ -56,9 +41,6 @@ export const getDifficultyClass = (difficulty: string): string => {
   }
 };
 
-/**
- * Get display text for game status
- */
 export const getStatusText = (status: GameStatus): string => {
   switch (status) {
     case 'available':
@@ -72,9 +54,6 @@ export const getStatusText = (status: GameStatus): string => {
   }
 };
 
-/**
- * Get button classes based on game status
- */
 export const getGameButtonClasses = (status: GameStatus): string => {
   const baseClasses = 'w-full py-2 px-4 rounded-md font-medium transition-colors duration-200';
   
@@ -89,31 +68,35 @@ export const getGameButtonClasses = (status: GameStatus): string => {
   }
 };
 
-/**
- * Format player count for display
- */
 export const formatPlayerCount = (players: string): string => {
   return `${players} player${players !== '1' ? 's' : ''}`;
 };
 
-/**
- * Format rating for display
- */
 export const formatRating = (rating: number): string => {
   return rating.toFixed(1);
 };
 
-/**
- * Get estimated play time display
- */
 export const getPlayTimeDisplay = (estimatedPlayTime?: string): string => {
   return estimatedPlayTime || 'Variable';
 };
 
-/**
- * Get tags display string
- */
 export const getTagsDisplay = (tags?: string[]): string => {
   if (!tags || tags.length === 0) return '';
   return tags.join(', ');
 }; 
+
+export function isSquareDark(square: string): boolean {
+  if (!square || square.length !== 2) return false;
+  
+  const file = square.charCodeAt(0) - 'a'.charCodeAt(0); 
+  const rankChar = square[1];
+  if (!rankChar) return false;
+  
+  const rank = parseInt(rankChar) - 1; 
+
+  return (file + rank) % 2 === 0;
+}
+
+export function getSquareColor(square: string): 'w' | 'b' {
+  return isSquareDark(square) ? 'b' : 'w';
+} 

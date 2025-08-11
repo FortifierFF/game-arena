@@ -26,7 +26,7 @@ export default function ChessBoard() {
   const workerRef = useRef<Worker | null>(null);
 
   // Promotion UI state
-  const [pendingPromotion, setPendingPromotion] = useState<null | { from: string; to: string }>(null);
+  const [pendingPromotion, setPendingPromotion] = useState<null | { from: string; to: string; pieceColor: 'w' | 'b' }>(null);
 
   // Manual mode: control both sides, engine disabled
   const [manualMode, setManualMode] = useState(false);
@@ -122,7 +122,7 @@ export default function ChessBoard() {
     const needsPromotion = isPawn && ((piece.color === 'w' && targetRank === '8') || (piece.color === 'b' && targetRank === '1'));
 
     if (needsPromotion) {
-      setPendingPromotion({ from: sourceSquare, to: targetSquare });
+      setPendingPromotion({ from: sourceSquare, to: targetSquare, pieceColor: piece.color });
       return false; // Don't make the move yet
     }
 
@@ -341,7 +341,8 @@ export default function ChessBoard() {
       {pendingPromotion && (
         <PromotionPicker
           onSelect={(p) => confirmPromotion(p)}
-          onCancel={() => setPendingPromotion(null)}
+          pieceColor={pendingPromotion.pieceColor}
+          targetSquare={pendingPromotion.to}
         />
       )}
     </div>
