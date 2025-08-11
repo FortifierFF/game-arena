@@ -161,3 +161,28 @@
   background-color: #f3f4f6 !important;
   transform: scale(1.05) !important;
 }
+
+/* Chess Board Highlighting Styles */
+.chess-square-highlight {
+  position: relative;
+}
+
+.chess-square-highlight::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(59, 130, 246, 0.6) !important; /* Blue highlight with transparency */
+  border: 2px solid rgba(59, 130, 246, 0.8) !important;
+  border-radius: 2px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Dark mode variant */
+.dark .chess-square-highlight::before {
+  background-color: rgba(96, 165, 250, 0.6) !important; /* Lighter blue for dark mode */
+  border-color: rgba(96, 165, 250, 0.8) !important;
+}

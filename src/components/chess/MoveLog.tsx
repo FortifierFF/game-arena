@@ -17,11 +17,7 @@ interface MoveLogProps {
 }
 
 export function MoveLog({ moveLog, getMoveLog }: MoveLogProps) {
-  // Debug logging
-  console.log('MoveLog render - moveLog:', moveLog);
-  console.log('MoveLog render - getMoveLog():', getMoveLog());
   
-  // Get formatted move log with move numbers
   const formattedMoves = getMoveLog();
 
   return (

@@ -30,6 +30,8 @@ export default function ChessBoard() {
 
   // Manual mode: control both sides, engine disabled
   const [manualMode, setManualMode] = useState(false);
+  
+
 
   const difficulties = [
     { value: 'beginner', label: 'Beginner' },
@@ -92,6 +94,93 @@ export default function ChessBoard() {
       logMoveWithPiece(from, to, pieceType, newFen);
     }
   }
+  
+  // Handle square clicks to show legal moves
+  function onSquareClick({ square }: { square: string }) {
+    const piece = chessRef.current.get(square as Square);
+    
+    // If no piece or wrong color, do nothing
+    if (!piece) return;
+    if (manualMode) {
+      if (chessRef.current.turn() !== piece.color) return;
+    } else {
+      if (piece.color !== 'w' || chessRef.current.turn() !== 'w') return;
+    }
+    
+    // Check if this square is already highlighted (toggle behavior)
+    const isAlreadyHighlighted = document.querySelector(`[data-square="${square}"]`)?.classList.contains('chess-square-highlight');
+    
+    // If already highlighted, remove all highlights and return
+    if (isAlreadyHighlighted) {
+      document.querySelectorAll('.chess-square-highlight').forEach(el => {
+        el.classList.remove('chess-square-highlight');
+      });
+      return;
+    }
+    
+    // Get legal moves for this piece
+    const legalMoves = chessRef.current.moves({ square: square as Square, verbose: true });
+    
+    // Log legal moves to console for now
+    console.log(`Legal moves for ${piece.type} on ${square}:`, legalMoves.map(move => move.to));
+    
+    // Add visual highlighting using CSS classes
+    // First, remove any existing highlights
+    document.querySelectorAll('.chess-square-highlight').forEach(el => {
+      el.classList.remove('chess-square-highlight');
+    });
+    
+    // Highlight the selected square
+    const selectedSquareEl = document.querySelector(`[data-square="${square}"]`);
+    if (selectedSquareEl) {
+      selectedSquareEl.classList.add('chess-square-highlight');
+    }
+    console.log(selectedSquareEl);
+    
+    // Highlight legal move squares
+    legalMoves.forEach(move => {
+      const targetSquareEl = document.querySelector(`[data-square="${move.to}"]`);
+      if (targetSquareEl) {
+        targetSquareEl.classList.add('chess-square-highlight');
+      }
+    });
+  }
+  
+  // Handle piece drag begin to show legal moves
+  function onPieceDragBegin({ square }: { piece: unknown; square: string | null; isSparePiece: boolean }) {
+    if (!square) return;
+    
+    const pieceObj = chessRef.current.get(square as Square);
+    
+    if (!pieceObj) return;
+    if (manualMode) {
+      if (chessRef.current.turn() !== pieceObj.color) return;
+    } else {
+      if (pieceObj.color !== 'w' || chessRef.current.turn() !== 'w') return;
+    }
+    
+    const legalMoves = chessRef.current.moves({ square: square as Square, verbose: true });
+    
+    console.log(`Legal moves for ${pieceObj.type} on ${square} (drag begin):`, legalMoves.map(move => move.to));
+    
+    document.querySelectorAll('.chess-square-highlight').forEach(el => {
+      el.classList.remove('chess-square-highlight');
+    });
+    
+    // Highlight the source square (piece being dragged)
+    const sourceSquareEl = document.querySelector(`[data-square="${square}"]`);
+    if (sourceSquareEl) {
+      sourceSquareEl.classList.add('chess-square-highlight');
+    }
+    
+    // Highlight legal move squares
+    legalMoves.forEach(move => {
+      const targetSquareEl = document.querySelector(`[data-square="${move.to}"]`);
+      if (targetSquareEl) {
+        targetSquareEl.classList.add('chess-square-highlight');
+      }
+    });
+  }
 
   // Helper function to get piece type from chess.js move result
   function getPieceTypeFromMove(moveResult: { piece: string }): string {
@@ -110,6 +199,11 @@ export default function ChessBoard() {
   const onDrop = ({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string | null; }) => {
     if (thinking) return false; // Block while engine is thinking
     if (!targetSquare || sourceSquare === targetSquare) return false;
+
+    // Clear all highlights when a piece is dropped
+    document.querySelectorAll('.chess-square-highlight').forEach(el => {
+      el.classList.remove('chess-square-highlight');
+    });
 
     // Only allow moving piece whose color matches side to move
     const piece = chessRef.current.get(sourceSquare as Square);
@@ -173,7 +267,7 @@ export default function ChessBoard() {
     setThinking(true);
     sendToEngine('stop');
     const skillMap: Record<string, number> = { beginner: 0, easy: 5, medium: 10, hard: 15, expert: 20, master: 20 };
-    const timeMap: Record<string, number> = { beginner: 400, easy: 700, medium: 1200, hard: 1800, expert: 2500, master: 3500 };
+    const timeMap: Record<string, number> = { beginner: 400, easy: 350, medium: 300, hard: 250, expert: 200, master: 100 };
     sendToEngine('ucinewgame');
     sendToEngine(`setoption name Skill Level value ${skillMap[gameState.difficulty] ?? 10}`);
     sendToEngine('setoption name MultiPV value 1');
@@ -207,6 +301,8 @@ export default function ChessBoard() {
                   id: 'game-board',
                   position: fen,
                   boardOrientation: 'white',
+                  onSquareClick: onSquareClick,
+                  onPieceDrag: onPieceDragBegin,
                   canDragPiece: ({ square }) => {
                     if (thinking) return false;
                     const p = chessRef.current.get(square as Square);

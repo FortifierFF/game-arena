@@ -184,13 +184,10 @@ export function useChessGame() {
 
   // Simple move logging function for external use
   const logMove = useCallback((from: string, to: string, fen: string) => {
-    console.log('logMove called:', { from, to, fen });
     
     // Get piece type from the provided FEN
     const piece = getPieceAtSquare(fen, from);
     const pieceType = getPieceType(piece);
-    
-    console.log('Piece found:', { piece, pieceType });
     
     // Create human-readable move notation
     const moveNotation = `${from}-${to}`;
@@ -204,12 +201,9 @@ export function useChessGame() {
       timestamp: new Date()
     };
 
-    console.log('New move created:', newMove);
-
     // Add move to log
     setMoveLog(prev => {
       const newLog = [...prev, newMove];
-      console.log('Updated move log:', newLog);
       return newLog;
     });
     
@@ -222,7 +216,6 @@ export function useChessGame() {
 
   // Move logging function that takes piece type directly
   const logMoveWithPiece = useCallback((from: string, to: string, pieceType: string, newFen?: string) => {
-    console.log('logMoveWithPiece called:', { from, to, pieceType, newFen });
     
     // Create human-readable move notation
     const moveNotation = `${from}-${to}`;
@@ -236,27 +229,21 @@ export function useChessGame() {
       timestamp: new Date()
     };
 
-    console.log('New move created:', newMove);
-
     // Add move to log
     setMoveLog(prev => {
       const newLog = [...prev, newMove];
-      console.log('Updated move log:', newLog);
       return newLog;
     });
     
     // Track FEN history for navigation
     if (newFen) {
       setFenHistory(prev => {
-        console.log('Updating FEN history. Current:', prev, 'Adding:', newFen);
         // Always add the new FEN to the end of history
         const newHistory = [...prev, newFen];
-        console.log('New FEN history:', newHistory);
         return newHistory;
       });
       setCurrentMoveIndex(prev => {
         const newIndex = prev + 1;
-        console.log('Updated current move index to:', newIndex);
         return newIndex;
       });
     }
@@ -270,12 +257,10 @@ export function useChessGame() {
 
   // Navigate to previous move
   const goBack = useCallback(() => {
-    console.log('goBack called. Current index:', currentMoveIndex, 'FEN history:', fenHistory);
     if (currentMoveIndex > 0) {
       const newIndex = currentMoveIndex - 1;
       setCurrentMoveIndex(newIndex);
       const previousFen = fenHistory[newIndex];
-      console.log('Going back to index:', newIndex, 'FEN:', previousFen);
       if (previousFen) {
         setGameState(prev => ({
           ...prev,
@@ -290,12 +275,10 @@ export function useChessGame() {
 
   // Navigate to next move
   const goForward = useCallback(() => {
-    console.log('goForward called. Current index:', currentMoveIndex, 'FEN history:', fenHistory);
     if (currentMoveIndex < fenHistory.length - 1) {
       const newIndex = currentMoveIndex + 1;
       setCurrentMoveIndex(newIndex);
       const nextFen = fenHistory[newIndex];
-      console.log('Going forward to index:', newIndex, 'FEN:', nextFen);
       if (nextFen) {
         setGameState(prev => ({
           ...prev,
@@ -321,43 +304,14 @@ export function useChessGame() {
   const getFenHistory = useCallback(() => fenHistory, [fenHistory]);
   const getCurrentMoveIndex = useCallback(() => currentMoveIndex, [currentMoveIndex]);
 
-  // Debug function to test navigation
-  const debugNavigation = useCallback(() => {
-    console.log('=== NAVIGATION DEBUG ===');
-    console.log('fenHistory:', fenHistory);
-    console.log('currentMoveIndex:', currentMoveIndex);
-    console.log('canGoBack:', canGoBack);
-    console.log('canGoForward:', canGoForward);
-    console.log('moveLog length:', moveLog.length);
-    console.log('Current gameState.fen:', gameState.fen);
-    
-    // Test going back one step
-    if (canGoBack) {
-      console.log('Testing goBack...');
-      const prevFen = fenHistory[currentMoveIndex - 1];
-      console.log('Previous FEN would be:', prevFen);
-      console.log('Is this different from current?', prevFen !== gameState.fen);
-    }
-    
-    // Test going forward one step
-    if (canGoForward) {
-      console.log('Testing goForward...');
-      const nextFen = fenHistory[currentMoveIndex + 1];
-      console.log('Next FEN would be:', nextFen);
-      console.log('Is this different from current?', nextFen !== gameState.fen);
-    }
-  }, [fenHistory, currentMoveIndex, canGoBack, canGoForward, moveLog.length, gameState.fen]);
-
   // Function to manually add current FEN to history
   const addCurrentFenToHistory = useCallback(() => {
     const currentFen = gameState.fen;
-    console.log('Manually adding current FEN to history:', currentFen);
     
     setFenHistory(prev => {
       // Only add if it's not already the last entry
       if (prev.length === 0 || prev[prev.length - 1] !== currentFen) {
         const newHistory = [...prev, currentFen];
-        console.log('Updated FEN history:', newHistory);
         return newHistory;
       }
       return prev;
@@ -365,20 +319,16 @@ export function useChessGame() {
     
     setCurrentMoveIndex(prev => {
       const newIndex = prev + 1;
-      console.log('Updated current move index to:', newIndex);
       return newIndex;
     });
   }, [gameState.fen]);
 
   // Get hint (best move) from Stockfish
   const getHint = useCallback(async (): Promise<{ from: string; to: string; score: number } | null> => {
-    console.log('getHint called with FEN:', gameState.fen);
     
     if (!workerRef.current) {
-      console.log('Creating new Stockfish worker for hint');
       try {
         workerRef.current = new Worker(new URL('../workers/stockfish.worker.ts', import.meta.url));
-        console.log('Worker created successfully:', workerRef.current);
       } catch (error) {
         console.error('Failed to create worker:', error);
         return null;
@@ -389,20 +339,16 @@ export function useChessGame() {
 
     return new Promise((resolve) => {
       const worker = workerRef.current!;
-      console.log('Setting up message handler for worker:', worker);
       
       // Set up message handler for this hint request
       const handleMessage = (event: MessageEvent) => {
-        console.log('Received message from worker:', event.data);
         const { type, data } = event.data;
         
         if (type === 'bestmove') {
-          console.log('Best move received:', data);
           worker.removeEventListener('message', handleMessage);
           setHint(data); // Store the hint
           resolve(data);
         } else if (type === 'error') {
-          console.error('Stockfish error:', data);
           worker.removeEventListener('message', handleMessage);
           setHint(null); // Clear hint on error
           resolve(null);
@@ -498,7 +444,6 @@ export function useChessGame() {
     syncBoard,
     getFenHistory,
     getCurrentMoveIndex,
-    debugNavigation,
     addCurrentFenToHistory,
     hint,
     getHint,
