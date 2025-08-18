@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { ChessGameState, ChessDifficulty, ChessEngineResponse } from '@/types/chess';
+import { Chess } from 'chess.js'; // Added import for chess.js
 
 // Initial FEN for starting position
 // FEN = Forsyth-Edwards Notation - describes chess board state
@@ -61,6 +62,49 @@ export function useChessGame() {
       initializeFenHistory();
     }
   }, [gameState.fen, fenHistory, initializeFenHistory]);
+
+  // Check for game endings (checkmate, stalemate, draw)
+  const checkGameEndings = useCallback((fen: string) => {
+    // Create a temporary chess instance to check game state
+    const tempChess = new Chess(fen);
+    
+    let isGameOver = false;
+    let winner: 'white' | 'black' | 'draw' | undefined;
+    
+    // Check for checkmate
+    if (tempChess.isCheckmate()) {
+      isGameOver = true;
+      // Winner is the opposite of whose turn it is (the one who just moved)
+      winner = tempChess.turn() === 'w' ? 'black' : 'white';
+    }
+    // Check for stalemate
+    else if (tempChess.isStalemate()) {
+      isGameOver = true;
+      winner = 'draw';
+    }
+    // Check for draw conditions
+    else if (tempChess.isDraw()) {
+      isGameOver = true;
+      winner = 'draw';
+    }
+    // Check for insufficient material
+    else if (tempChess.isInsufficientMaterial()) {
+      isGameOver = true;
+      winner = 'draw';
+    }
+    // Check for threefold repetition
+    else if (tempChess.isThreefoldRepetition()) {
+      isGameOver = true;
+      winner = 'draw';
+    }
+    // Check for fifty-move rule (chess.js doesn't have this method, so we'll skip it)
+    // else if (tempChess.isFiftyMove()) {
+    //   isGameOver = true;
+    //   winner = 'draw';
+    // }
+    
+    return { isGameOver, winner };
+  }, []);
 
   // Get piece type from FEN character
   const getPieceType = useCallback((fenChar: string): string => {
@@ -248,12 +292,33 @@ export function useChessGame() {
       });
     }
     
-    // Update the last move in game state
-    setGameState(prev => ({
-      ...prev,
-      lastMove: moveNotation,
-    }));
-  }, []);
+    // Check for game endings after the move
+    if (newFen) {
+      const { isGameOver, winner } = checkGameEndings(newFen);
+      
+      // Update game state with ending information
+      const updateData: Partial<ChessGameState> = {
+        lastMove: moveNotation,
+        isGameOver,
+      };
+      
+      // Only set winner if it's defined
+      if (winner) {
+        updateData.winner = winner;
+      }
+      
+      setGameState(prev => ({
+        ...prev,
+        ...updateData,
+      }));
+    } else {
+      // Update the last move in game state
+      setGameState(prev => ({
+        ...prev,
+        lastMove: moveNotation,
+      }));
+    }
+  }, [checkGameEndings]);
 
   // Navigate to previous move
   const goBack = useCallback(() => {
@@ -409,6 +474,7 @@ export function useChessGame() {
       difficulty: gameState.difficulty,
       gameHistory: [],
       isGameOver: false,
+      // Don't set winner - it will be undefined by default
     });
     setMoveLog([]); // Clear move log
     setFenHistory([INITIAL_FEN]); // Reset FEN history
@@ -447,5 +513,6 @@ export function useChessGame() {
     addCurrentFenToHistory,
     hint,
     getHint,
+    checkGameEndings,
   };
 } 

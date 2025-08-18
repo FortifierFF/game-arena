@@ -15,6 +15,7 @@ import PromotionPicker, { PromotionPiece } from './PromotionPicker';
 import { MoveLog } from './MoveLog';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Icon from '@/components/ui/Icon';
+import GameEndingModal from './GameEndingModal';
 
 export default function ChessBoard() {
   const { gameState, error, changeDifficulty, resetGame, logMoveWithPiece, moveLog, getMoveLog, goBack, goForward, canGoBack, canGoForward } = useChessGame();
@@ -30,8 +31,21 @@ export default function ChessBoard() {
 
   // Manual mode: control both sides, engine disabled
   const [manualMode, setManualMode] = useState(false);
-  
 
+    // Game ending modal state
+  const [showGameEndingModal, setShowGameEndingModal] = useState(false);
+
+  // Game ending modal handlers
+  const handleNewGame = () => {
+    setShowGameEndingModal(false);
+    chessRef.current = new Chess();
+    setFen(chessRef.current.fen());
+    resetGame();
+  };
+
+  const handleCloseModal = () => {
+    setShowGameEndingModal(false);
+  };
 
   const difficulties = [
     { value: 'beginner', label: 'Beginner' },
@@ -74,6 +88,13 @@ export default function ChessBoard() {
     setFen(chessRef.current.fen());
   }, [resetGame]);
 
+  // Show game ending modal when game ends
+  useEffect(() => {
+    if (gameState.isGameOver && gameState.winner) {
+      setShowGameEndingModal(true);
+    }
+  }, [gameState.isGameOver, gameState.winner]);
+
   function sendToEngine(cmd: string) {
     workerRef.current?.postMessage(cmd);
   }
@@ -97,6 +118,9 @@ export default function ChessBoard() {
   
   // Handle square clicks to show legal moves
   function onSquareClick({ square }: { square: string }) {
+    // Don't allow highlighting when game is over
+    if (gameState.isGameOver) return;
+    
     const piece = chessRef.current.get(square as Square);
     
     // If no piece or wrong color, do nothing
@@ -148,7 +172,7 @@ export default function ChessBoard() {
   
   // Handle piece drag begin to show legal moves
   function onPieceDragBegin({ square }: { piece: unknown; square: string | null; isSparePiece: boolean }) {
-    if (!square) return;
+    if (!square || gameState.isGameOver) return; // Don't allow highlighting when game is over
     
     const pieceObj = chessRef.current.get(square as Square);
     
@@ -197,7 +221,7 @@ export default function ChessBoard() {
 
   // Human makes a move (sync return for library)
   const onDrop = ({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string | null; }) => {
-    if (thinking) return false; // Block while engine is thinking
+    if (thinking || gameState.isGameOver) return false; // Block while engine is thinking or game is over
     if (!targetSquare || sourceSquare === targetSquare) return false;
 
     // Clear all highlights when a piece is dropped
@@ -260,8 +284,8 @@ export default function ChessBoard() {
   }
 
   function triggerEngine() {
-    if (manualMode) {
-      return;
+    if (manualMode || gameState.isGameOver) {
+      return; // Don't trigger engine if game is over
     }
 
     setThinking(true);
@@ -304,7 +328,7 @@ export default function ChessBoard() {
                   onSquareClick: onSquareClick,
                   onPieceDrag: onPieceDragBegin,
                   canDragPiece: ({ square }) => {
-                    if (thinking) return false;
+                    if (thinking || gameState.isGameOver) return false; // Disable moves when game is over
                     const p = chessRef.current.get(square as Square);
                     if (!p) return false;
                     if (manualMode) {
@@ -365,6 +389,7 @@ export default function ChessBoard() {
                 <h3 className="font-semibold mb-2">Actions</h3>
                 <div className="flex gap-2">
                   <Button onClick={() => {
+                    setShowGameEndingModal(false); // Close modal if open
                     chessRef.current = new Chess();
                     setFen(chessRef.current.fen());
                     // Clear move log when starting new game
@@ -373,6 +398,7 @@ export default function ChessBoard() {
                     New Game
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => {
+                    setShowGameEndingModal(false); // Close modal if open
                     chessRef.current = new Chess();
                     setFen(chessRef.current.fen());
                     resetGame(); // Calls resetGame from hook
@@ -416,6 +442,20 @@ export default function ChessBoard() {
                 </div>
               </div>
 
+
+
+              {/* Check indicator */}
+              {!gameState.isGameOver && chessRef.current.isCheck() && (
+                <div className="bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 text-sm">
+                  <div className="font-semibold text-yellow-900 dark:text-yellow-100">
+                    ⚠️ Check!
+                  </div>
+                  <div className="text-yellow-700 dark:text-yellow-200 text-xs">
+                    Your king is under attack!
+                  </div>
+                </div>
+              )}
+
               {error && (
                 <div className="bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm">
                   {error}
@@ -435,6 +475,14 @@ export default function ChessBoard() {
           targetSquare={pendingPromotion.to}
         />
       )}
+
+      {/* Game Ending Modal */}
+      <GameEndingModal
+        isOpen={showGameEndingModal}
+        winner={gameState.winner}
+        onNewGame={handleNewGame}
+        onClose={handleCloseModal}
+      />
     </div>
   );
 } 

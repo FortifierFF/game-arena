@@ -156,10 +156,25 @@ This project aims to build a modern browser-based gaming platform featuring game
 ### ♟️ Chess Game
 
 - [ ] [Chess Game Setup](#) _(See separate checklist)_
-- [ ] Chess board implementation
-- [ ] Chess rules engine
-- [ ] Chess AI (optional)
-- [ ] Chess move validation
+- [x] Chess board implementation ✅
+- [x] Chess rules engine ✅
+- [x] Chess AI (optional) ✅
+- [x] Chess move validation ✅
+- [x] Game endings detection - Currently missing checkmate/stalemate/draw detection ✅
+- [ ] Chess notation - Move log shows basic notation (e2-e4) but could show proper algebraic notation (e4, Nf3, O-O)
+- [ ] Game analysis - Stockfish can provide position evaluation, but it's not fully displayed
+- [ ] Opening book - Could add opening name recognition
+- [ ] Time controls - No chess clocks implemented yet
+- [ ] Game saving/loading - Can't save games to resume later
+- [ ] UI/UX Enhancements:
+
+- [ ] Sound effects - No audio feedback for moves, captures, check
+- [ ] Animations - Pieces just teleport, could add smooth move animations
+- [ ] Board flipping - Always plays from white's perspective
+- [ ] Piece themes - Only one piece set available
+- [ ] Board themes - Limited color customization
+- [ ] Hint system - The getHint() function exists but isn't exposed in UI
+
 - [ ] Chess game modes (classic, blitz, bullet)
 
 ### 🔴 Checkers Game
