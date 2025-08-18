@@ -8,6 +8,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { ChessGameState, ChessDifficulty, ChessEngineResponse } from '@/types/chess';
 import { Chess } from 'chess.js'; // Added import for chess.js
+import { BoardTheme, BOARD_THEMES } from '@/components/chess/BoardThemes';
 
 // Initial FEN for starting position
 // FEN = Forsyth-Edwards Notation - describes chess board state
@@ -34,6 +35,19 @@ export function useChessGame() {
     difficulty: 'medium',
     gameHistory: [],
     isGameOver: false,
+  });
+
+  // Board theme state
+  const [boardTheme, setBoardTheme] = useState<BoardTheme>(() => {
+    // Try to load saved theme from localStorage
+    if (typeof window !== 'undefined') {
+      const savedThemeId = localStorage.getItem('chess-board-theme');
+      if (savedThemeId) {
+        const savedTheme = BOARD_THEMES.find(theme => theme.id === savedThemeId);
+        if (savedTheme) return savedTheme;
+      }
+    }
+    return BOARD_THEMES[1]!; // Default to Ocean Blue
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -466,6 +480,15 @@ export function useChessGame() {
     }));
   }, []);
 
+  // Change board theme
+  const changeBoardTheme = useCallback((theme: BoardTheme) => {
+    setBoardTheme(theme);
+    // Save theme preference to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('chess-board-theme', theme.id);
+    }
+  }, []);
+
   // Reset game
   const resetGame = useCallback(() => {
     setGameState({
@@ -501,6 +524,8 @@ export function useChessGame() {
     logMove,
     logMoveWithPiece,
     changeDifficulty,
+    changeBoardTheme,
+    boardTheme,
     resetGame,
     goBack,
     goForward,

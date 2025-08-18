@@ -172,7 +172,7 @@ This project aims to build a modern browser-based gaming platform featuring game
 - [ ] Animations - Pieces just teleport, could add smooth move animations
 - [ ] Board flipping - Always plays from white's perspective
 - [ ] Piece themes - Only one piece set available
-- [ ] Board themes - Limited color customization
+- [x] Board themes - Limited color customization ✅
 - [ ] Hint system - The getHint() function exists but isn't exposed in UI
 
 - [ ] Chess game modes (classic, blitz, bullet)

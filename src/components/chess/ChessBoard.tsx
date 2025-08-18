@@ -13,12 +13,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useChessGame } from '@/hooks/useChessGame';
 import PromotionPicker, { PromotionPiece } from './PromotionPicker';
 import { MoveLog } from './MoveLog';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import Icon from '@/components/ui/Icon';
 import GameEndingModal from './GameEndingModal';
+import SettingsModal from './SettingsModal';
 
 export default function ChessBoard() {
-  const { gameState, error, changeDifficulty, resetGame, logMoveWithPiece, moveLog, getMoveLog, goBack, goForward, canGoBack, canGoForward } = useChessGame();
+  const { gameState, error, changeDifficulty, changeBoardTheme, boardTheme, resetGame, logMoveWithPiece, moveLog, getMoveLog, goBack, goForward, canGoBack, canGoForward } = useChessGame();
 
   // Local game model managed by chess.js for legality + FEN
   const chessRef = useRef(new Chess());
@@ -35,6 +36,9 @@ export default function ChessBoard() {
     // Game ending modal state
   const [showGameEndingModal, setShowGameEndingModal] = useState(false);
 
+  // Settings modal state
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+
   // Game ending modal handlers
   const handleNewGame = () => {
     setShowGameEndingModal(false);
@@ -47,14 +51,16 @@ export default function ChessBoard() {
     setShowGameEndingModal(false);
   };
 
-  const difficulties = [
-    { value: 'beginner', label: 'Beginner' },
-    { value: 'easy', label: 'Easy' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'hard', label: 'Hard' },
-    { value: 'expert', label: 'Expert' },
-    { value: 'master', label: 'Master' },
-  ] as const;
+  // Settings modal handlers
+  const handleManualModeChange = (manual: boolean) => {
+    setManualMode(manual);
+  };
+
+  const handleCloseSettings = () => {
+    setShowSettingsModal(false);
+  };
+
+
 
   // Initialize worker on mount
   useEffect(() => {
@@ -340,49 +346,25 @@ export default function ChessBoard() {
                   },
                   onPieceDrop: ({ sourceSquare, targetSquare }) => onDrop({ sourceSquare, targetSquare }),
                   boardStyle: { borderRadius: 8 },
-                  darkSquareStyle: { backgroundColor: '#2b3546' },
-                  lightSquareStyle: { backgroundColor: '#e8edf9' },
+                  darkSquareStyle: { backgroundColor: boardTheme.darkSquare },
+                  lightSquareStyle: { backgroundColor: boardTheme.lightSquare },
                 }}
               />
             </div>
 
             {/* Controls */}
             <div className="space-y-4">
+              {/* Settings Button */}
               <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
-                <h3 className="font-semibold mb-2">Mode</h3>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant={manualMode ? 'default' : 'outline'}
-                    onClick={() => setManualMode(true)}
-                  >
-                    Manual (both sides)
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={!manualMode ? 'default' : 'outline'}
-                    onClick={() => setManualMode(false)}
-                  >
-                    Vs Engine
-                  </Button>
-                </div>
-              </div>
-
-              <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
-                <h3 className="font-semibold mb-2">Difficulty</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {difficulties.map((diff) => (
-                    <Button
-                      key={diff.value}
-                      onClick={() => changeDifficulty(diff.value)}
-                      variant={gameState.difficulty === diff.value ? 'default' : 'outline'}
-                      size="sm"
-                      className="text-xs"
-                    >
-                      {diff.label}
-                    </Button>
-                  ))}
-                </div>
+                <Button
+                  onClick={() => setShowSettingsModal(true)}
+                  variant="outline"
+                  size="sm"
+                  className="w-full flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  Settings
+                </Button>
               </div>
 
               <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
@@ -442,8 +424,6 @@ export default function ChessBoard() {
                 </div>
               </div>
 
-
-
               {/* Check indicator */}
               {!gameState.isGameOver && chessRef.current.isCheck() && (
                 <div className="bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 text-sm">
@@ -482,6 +462,18 @@ export default function ChessBoard() {
         winner={gameState.winner}
         onNewGame={handleNewGame}
         onClose={handleCloseModal}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={handleCloseSettings}
+        manualMode={manualMode}
+        onManualModeChange={handleManualModeChange}
+        difficulty={gameState.difficulty}
+        onDifficultyChange={changeDifficulty}
+        currentTheme={boardTheme.id}
+        onThemeChange={changeBoardTheme}
       />
     </div>
   );
