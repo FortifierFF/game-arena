@@ -186,7 +186,6 @@ export default function ChessBoard() {
     if (selectedSquareEl) {
       selectedSquareEl.classList.add('chess-square-highlight');
     }
-    console.log(selectedSquareEl);
     
     // Highlight legal move squares
     legalMoves.forEach(move => {
@@ -249,17 +248,38 @@ export default function ChessBoard() {
   // Human makes a move (sync return for library)
   const onDrop = ({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string | null; }) => {
     if (thinking || gameState.isGameOver) return false; // Block while engine is thinking or game is over
-    if (!targetSquare || sourceSquare === targetSquare) return false;
+    if (!targetSquare) return false;
 
     // Clear all highlights when a piece is dropped
     document.querySelectorAll('.chess-square-highlight').forEach(el => {
       el.classList.remove('chess-square-highlight');
     });
 
+    // Handle same position drop (just clear highlights and return)
+    if (sourceSquare === targetSquare) {
+      return false;
+    }
+
     // Only allow moving piece whose color matches side to move
     const piece = chessRef.current.get(sourceSquare as Square);
     if (!piece || chessRef.current.turn() !== piece.color) return false;
     if (!manualMode && piece.color !== 'w') return false; // vs engine: only white moves
+
+    // Check if the move is legal before attempting it
+    const legalMoves = chessRef.current.moves({ square: sourceSquare as Square, verbose: true });
+    const isLegalMove = legalMoves.some(move => move.to === targetSquare);
+    
+    if (!isLegalMove) {
+      // Illegal move - show brief visual feedback and return false
+      const targetSquareEl = document.querySelector(`[data-square="${targetSquare}"]`);
+      if (targetSquareEl) {
+        targetSquareEl.classList.add('illegal-move-highlight');
+        setTimeout(() => {
+          targetSquareEl.classList.remove('illegal-move-highlight');
+        }, 500);
+      }
+      return false;
+    }
 
     // Detect potential promotion for both colors
     const isPawn = piece.type === 'p';
@@ -271,7 +291,7 @@ export default function ChessBoard() {
       return false; // Don't make the move yet
     }
 
-    // Make the move
+    // Make the move (we know it's legal now)
     const result = chessRef.current.move({ from: sourceSquare, to: targetSquare });
     if (result) {
       const newFen = chessRef.current.fen();

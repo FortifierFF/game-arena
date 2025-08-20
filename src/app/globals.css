@@ -392,3 +392,41 @@ input[type="range"].slider:not([style*="background"]) {
   height: 8px !important;
   border: 1px solid #9ca3af !important;
 }
+
+/* Illegal Move Highlight */
+.illegal-move-highlight {
+  position: relative;
+  animation: illegalShake 0.2s ease-in-out;
+}
+
+@keyframes illegalShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+.illegal-move-highlight::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(239, 68, 68, 0.3) !important;
+  border: 2px solid rgba(239, 68, 68, 0.8) !important;
+  border-radius: 2px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Dark mode illegal move highlight */
+.dark .illegal-move-highlight::before {
+  background-color: rgba(248, 113, 113, 0.3) !important;
+  border-color: rgba(248, 113, 113, 0.8) !important;
+}
