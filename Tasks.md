@@ -169,7 +169,7 @@ This project aims to build a modern browser-based gaming platform featuring game
 - [ ] UI/UX Enhancements:
 
 - [ ] Sound effects - No audio feedback for moves, captures, check
-- [ ] Animations - Pieces just teleport, could add smooth move animations
+- [x] Animations - Pieces just teleport, could add smooth move animations ✅
 - [ ] Board flipping - Always plays from white's perspective
 - [ ] Piece themes - Only one piece set available
 - [x] Board themes - Limited color customization ✅

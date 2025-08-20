@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Chess, type Square } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,18 @@ export default function ChessBoard() {
 
   // Settings modal state
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  
+  // Piece movement speed state (in milliseconds)
+  const [animationSpeed, setAnimationSpeed] = useState(() => {
+    // Try to load saved animation speed from localStorage
+    if (typeof window !== 'undefined') {
+      const savedSpeed = localStorage.getItem('chess-animation-speed');
+      if (savedSpeed) {
+        return parseInt(savedSpeed);
+      }
+    }
+    return 500; // Default to normal speed (500ms)
+  });
 
   // Game ending modal handlers
   const handleNewGame = () => {
@@ -60,7 +72,33 @@ export default function ChessBoard() {
     setShowSettingsModal(false);
   };
 
+  // Piece movement speed change handler
+  const handleAnimationSpeedChange = (speed: number) => {
+    setAnimationSpeed(speed);
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('chess-animation-speed', speed.toString());
+    }
+  };
 
+
+
+  // Apply UCI move to chess.js
+  const applyUciMove = useCallback((uci: string) => {
+    const from = uci.slice(0, 2);
+    const to = uci.slice(2, 4);
+    const promo = uci.slice(4, 5);
+    const moveParams: { from: string; to: string; promotion?: string } = { from, to };
+    if (promo) moveParams.promotion = promo;
+    const result = chessRef.current.move(moveParams);
+    if (result) {
+      const newFen = chessRef.current.fen();
+      setFen(newFen);
+      // Log the engine move with piece type from the move result
+      const pieceType = getPieceTypeFromMove(result);
+      logMoveWithPiece(from, to, pieceType, newFen);
+    }
+  }, [logMoveWithPiece]);
 
   // Initialize worker on mount
   useEffect(() => {
@@ -86,7 +124,7 @@ export default function ChessBoard() {
       w.terminate();
       workerRef.current = null;
     };
-  }, []);
+  }, [applyUciMove]);
 
   // When resetting from outside, also reset chess.js
   useEffect(() => {
@@ -103,23 +141,6 @@ export default function ChessBoard() {
 
   function sendToEngine(cmd: string) {
     workerRef.current?.postMessage(cmd);
-  }
-
-  // Apply UCI move to chess.js
-  function applyUciMove(uci: string) {
-    const from = uci.slice(0, 2);
-    const to = uci.slice(2, 4);
-    const promo = uci.slice(4, 5);
-    const moveParams: { from: string; to: string; promotion?: string } = { from, to };
-    if (promo) moveParams.promotion = promo;
-    const result = chessRef.current.move(moveParams);
-    if (result) {
-      const newFen = chessRef.current.fen();
-      setFen(newFen);
-      // Log the engine move with piece type from the move result
-      const pieceType = getPieceTypeFromMove(result);
-      logMoveWithPiece(from, to, pieceType, newFen);
-    }
   }
   
   // Handle square clicks to show legal moves
@@ -348,6 +369,8 @@ export default function ChessBoard() {
                   boardStyle: { borderRadius: 8 },
                   darkSquareStyle: { backgroundColor: boardTheme.darkSquare },
                   lightSquareStyle: { backgroundColor: boardTheme.lightSquare },
+                  // Control piece movement animation speed
+                  animationDurationInMs: animationSpeed,
                 }}
               />
             </div>
@@ -474,6 +497,8 @@ export default function ChessBoard() {
         onDifficultyChange={changeDifficulty}
         currentTheme={boardTheme.id}
         onThemeChange={changeBoardTheme}
+        animationSpeed={animationSpeed}
+        onAnimationSpeedChange={handleAnimationSpeedChange}
       />
     </div>
   );

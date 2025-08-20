@@ -22,6 +22,9 @@ interface SettingsModalProps {
   // Board theme settings
   currentTheme: string;
   onThemeChange: (theme: BoardTheme) => void;
+  // Piece movement speed settings
+  animationSpeed: number;
+  onAnimationSpeedChange: (speed: number) => void;
 }
 
 export default function SettingsModal({
@@ -33,6 +36,8 @@ export default function SettingsModal({
   onDifficultyChange,
   currentTheme,
   onThemeChange,
+  animationSpeed,
+  onAnimationSpeedChange,
 }: SettingsModalProps) {
   if (!isOpen) return null;
 
@@ -132,6 +137,58 @@ export default function SettingsModal({
                     )}
                   </Button>
                 ))}
+              </div>
+            </div>
+
+            {/* Piece Movement Speed Section */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
+                  <div className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex items-center justify-center">
+                    <span className="text-xs font-bold">♟️</span>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-base text-gray-900 dark:text-white">Piece Movement Speed</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Control how fast pieces slide across the board</p>
+                </div>
+                <div className="ml-auto">
+                  <span className="text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 px-1.5 py-0.5 rounded-full">
+                    {animationSpeed}ms
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
+                  <span>Very Fast</span>
+                  <span>Fast</span>
+                  <span>Normal</span>
+                  <span>Slow</span>
+                  <span>Very Slow</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type="range"
+                    min="100"
+                    max="1000"
+                    step="100"
+                    value={animationSpeed}
+                    onChange={(e) => onAnimationSpeedChange(parseInt(e.target.value))}
+                    className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>100ms</span>
+                    <span>200ms</span>
+                    <span>300ms</span>
+                    <span>400ms</span>
+                    <span>500ms</span>
+                    <span>600ms</span>
+                    <span>700ms</span>
+                    <span>800ms</span>
+                    <span>900ms</span>
+                    <span>1000ms</span>
+                  </div>
+                </div>
               </div>
             </div>
 
