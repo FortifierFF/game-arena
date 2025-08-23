@@ -33,7 +33,13 @@ export default function Icon({
   return (
     <IconComponent
       size={sizeMap[size]}
-      className={cn('inline-block', className)}
+      className={cn('inline-block w-auto h-auto', className)}
+      style={{ 
+        width: `${sizeMap[size]}px`, 
+        height: `${sizeMap[size]}px`,
+        minWidth: `${sizeMap[size]}px`,
+        minHeight: `${sizeMap[size]}px`
+      }}
       {...props}
     />
   );

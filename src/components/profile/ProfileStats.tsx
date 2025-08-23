@@ -11,7 +11,7 @@ export default function ProfileStats({ stats }: ProfileStatsProps) {
     return (
       <div className="backdrop-blur-xl bg-white/80 dark:bg-white/10 border border-gray-200 dark:border-white/20 rounded-3xl p-6 shadow-2xl">
         <div className="text-center text-gray-600 dark:text-gray-400">
-          <Icon icon={Gamepad2} size="lg" className="mx-auto mb-3 text-gray-500" />
+          <Icon icon={Gamepad2} size="sm" className="mx-auto mb-3 text-gray-500" />
           <p>No stats available yet</p>
           <p className="text-sm">Play some games to see your statistics!</p>
         </div>
@@ -24,7 +24,7 @@ export default function ProfileStats({ stats }: ProfileStatsProps) {
   return (
     <div className="backdrop-blur-xl bg-white/80 dark:bg-white/10 border border-gray-200 dark:border-white/20 rounded-3xl p-6 shadow-2xl">
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center">
+        <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center">
           <Icon icon={Trophy} size="sm" className="text-white" />
         </div>
         <div>

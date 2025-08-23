@@ -101,7 +101,7 @@ export default function CountryCodeSelector({ selectedCode, onCodeChange, classN
               ))
             ) : (
               <div className="px-4 py-8 text-center text-gray-400">
-                <Icon icon={Globe} size="lg" className="mx-auto mb-2 opacity-50" />
+                <Icon icon={Globe} size="sm" className="mx-auto mb-2 opacity-50" />
                 <p>No countries found</p>
                 <p className="text-sm">Try a different search term</p>
               </div>

@@ -5,11 +5,11 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { UserProfile } from '@/types/auth';
 import ProfileHero from './ProfileHero';
 import ProfileForm from './ProfileForm';
-import ProfileStats from './ProfileStats';
+import MultiGameStats from './MultiGameStats';
 import ProfileActions from './ProfileActions';
 
 export default function ProfileClient() {
-  const { user, profile, stats, updateProfile, isLoading } = useAuth();
+  const { user, profile, updateProfile, isLoading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [localProfile, setLocalProfile] = useState<UserProfile | null>(null);
 
@@ -85,7 +85,7 @@ export default function ProfileClient() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Stats Card */}
-            <ProfileStats stats={stats} />
+            <MultiGameStats gameStats={[]} />
             
             {/* Actions Card */}
             <ProfileActions 

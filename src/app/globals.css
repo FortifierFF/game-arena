@@ -1,6 +1,14 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+/* Reset SVG sizing to prevent unwanted inheritance */
+svg {
+  width: auto !important;
+  height: auto !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -165,6 +173,8 @@
 /* Chess Board Highlighting Styles */
 .chess-square-highlight {
   position: relative;
+  background-color: rgba(59, 130, 246, 0.5) !important;
+  border: 2px solid rgba(59, 130, 246, 0.8) !important;
 }
 
 .chess-square-highlight::before {
@@ -397,6 +407,8 @@ input[type="range"].slider:not([style*="background"]) {
 .illegal-move-highlight {
   position: relative;
   animation: illegalShake 0.2s ease-in-out;
+  background-color: rgba(239, 68, 68, 0.5) !important;
+  border: 2px solid rgba(239, 68, 68, 0.8) !important;
 }
 
 @keyframes illegalShake {
