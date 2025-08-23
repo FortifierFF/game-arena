@@ -4,7 +4,7 @@ import {routing} from '@/i18n/routing';
 import { Geist, Geist_Mono } from 'next/font/google';
 import '../globals.css';
 import { LayoutWrapper } from '@/components/layout';
-import { ThemeProvider } from '@/components/providers';
+import { ThemeProvider, AuthProvider } from '@/components/providers';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -34,9 +34,11 @@ export default async function LocaleLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <NextIntlClientProvider>
           <ThemeProvider>
-            <LayoutWrapper>
-              {children}
-            </LayoutWrapper>
+            <AuthProvider>
+              <LayoutWrapper>
+                {children}
+              </LayoutWrapper>
+            </AuthProvider>
           </ThemeProvider>
         </NextIntlClientProvider>
       </body>

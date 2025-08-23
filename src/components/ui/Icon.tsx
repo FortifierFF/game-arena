@@ -72,6 +72,9 @@ export {
   Sword,
   SkipBack,
   SkipForward,
+  Wallet,
+  AlertCircle,
+  CheckCircle,
 } from 'lucide-react'; 
 
 

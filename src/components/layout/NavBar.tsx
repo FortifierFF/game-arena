@@ -12,10 +12,9 @@ import NavBarActions from './NavBarActions';
 
 interface NavBarProps {
   className?: string;
-  onLoginClick?: () => void;
 }
 
-export default function NavBar({ className, onLoginClick }: NavBarProps) {
+export default function NavBar({ className }: NavBarProps) {
   return (
     <header className={`sticky top-0 z-50 w-full border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm ${className}`}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -30,7 +29,7 @@ export default function NavBar({ className, onLoginClick }: NavBarProps) {
           </div>
 
           <div className="hidden md:flex md:items-center">
-            <NavBarActions onLoginClick={onLoginClick} />
+            <NavBarActions />
           </div>
 
           <div className="md:hidden">
@@ -62,7 +61,7 @@ export default function NavBar({ className, onLoginClick }: NavBarProps) {
         <div className="md:hidden" id="mobile-menu">
           <div className="space-y-1 px-2 pb-3 pt-2">
             <NavBarLinks className="flex-col space-y-4" />
-            <NavBarActions onLoginClick={onLoginClick} className="flex-col space-y-2" />
+            <NavBarActions className="flex-col space-y-2" />
           </div>
         </div>
       </div>
