@@ -17,23 +17,25 @@ const matchmakingQueue = new Map(); // Map<timeControl, Array<{userId, socketId,
 
 // Chess game class
 class ChessGame {
-  constructor(player1, player2, timeControl = '10+0') {
+  constructor(player1, player2, timeControl) {
     this.id = generateGameId();
     this.player1 = player1;
     this.player2 = player2;
-    this.player1SocketId = null; // Store socket ID for player 1
-    this.player2SocketId = null; // Store socket ID for player 2
+    this.timeControl = timeControl;
     this.chess = new Chess();
     this.status = 'waiting';
     this.currentPlayer = 'white';
-    this.startTime = null;
     this.moves = [];
-    this.timeControl = timeControl;
     this.playerTimes = {
       white: parseTimeControl(timeControl),
       black: parseTimeControl(timeControl)
     };
-    this.lastMoveTime = Date.now();
+    this.startTime = Date.now();
+    this.result = null;
+    this.winner = null;
+    this.loser = null;
+    this.player1SocketId = null;
+    this.player2SocketId = null;
   }
 
   start() {
@@ -81,8 +83,17 @@ class ChessGame {
     return false;
   }
 
-  endGame() {
+  endGame(result, winner, loser) {
     this.status = 'completed';
+    if (result && winner && loser) {
+      // New game ending logic
+      this.result = result;
+      this.winner = winner;
+      this.loser = loser;
+    } else {
+      // Legacy game ending logic (for backward compatibility)
+      this.result = this.getGameResult();
+    }
   }
 
   getGameState() {
@@ -94,7 +105,9 @@ class ChessGame {
       moves: this.moves,
       playerTimes: this.playerTimes,
       isGameOver: this.chess.isGameOver(),
-      result: this.chess.isGameOver() ? this.getGameResult() : null
+      result: this.result,
+      isCheck: this.chess.isCheck(),
+      checkColor: this.chess.isCheck() ? this.chess.turn() : null
     };
     
     return gameState;
@@ -165,6 +178,11 @@ io.on('connection', (socket) => {
     console.log('🔐 User authenticated:', userId);
     
     socket.emit('authenticated', { userId, walletAddress });
+    
+    // Send current queue sizes to the newly authenticated client
+    for (const [timeControl, queue] of matchmakingQueue.entries()) {
+      socket.emit('queue_update', { timeControl, queueSize: queue.length });
+    }
   });
 
   // Join matchmaking queue
@@ -208,6 +226,10 @@ io.on('connection', (socket) => {
 
     socket.emit('queue_joined', { queueId: generateGameId(), timeControl });
 
+    // Notify all clients about the updated queue size
+    const queueSize = matchmakingQueue.get(timeControl).length;
+    io.emit('queue_update', { timeControl, queueSize });
+
     // Try to find a match immediately
     const opponent = findMatch(userId, timeControl, rating || 1200);
     
@@ -223,6 +245,10 @@ io.on('connection', (socket) => {
       if (player2Index !== -1) queue.splice(player2Index, 1);
       
       console.log(`🔄 [Queue] Removed matched players from ${timeControl} queue. Queue now has ${queue.length} players`);
+
+      // Notify all clients about the updated queue size
+      const queueSize = queue.length;
+      io.emit('queue_update', { timeControl, queueSize });
 
       // Create game
       const game = new ChessGame(userId, opponent.userId, timeControl);
@@ -265,6 +291,10 @@ io.on('connection', (socket) => {
       if (index !== -1) {
         queue.splice(index, 1);
         console.log(`🔄 [Queue] Removed ${userId} from ${timeControl} queue`);
+        
+        // Notify all clients about the updated queue size
+        const queueSize = queue.length;
+        io.emit('queue_update', { timeControl, queueSize });
       }
     }
 
@@ -291,8 +321,75 @@ io.on('connection', (socket) => {
         gameState: game.getGameState()
       });
 
-      if (game.status === 'completed') {
-        handleGameEnd(game);
+      // Check if the game is over after this move
+      if (game.chess.isGameOver()) {
+        let result, winner, loser;
+        
+        if (game.chess.isCheckmate()) {
+          // The player who just moved won (checkmated opponent)
+          result = 'checkmate';
+          winner = userId;
+          loser = game.player1 === userId ? game.player2 : game.player1;
+        } else if (game.chess.isDraw()) {
+          result = 'draw';
+          winner = null;
+          loser = null;
+        } else if (game.chess.isStalemate()) {
+          result = 'stalemate';
+          winner = null;
+          loser = null;
+        }
+        
+        if (result) {
+          // End the game
+          game.endGame(result, winner, loser);
+          
+          // Get final game state
+          const gameState = game.getGameState();
+          
+          // Send different data to each player
+          const player1Socket = io.sockets.sockets.get(game.player1SocketId);
+          const player2Socket = io.sockets.sockets.get(game.player2SocketId);
+          
+          if (player1Socket) {
+            const isWinner = game.player1 === winner;
+            player1Socket.emit('game_ended', {
+              gameId,
+              result,
+              winner: game.player1,
+              loser: game.player2,
+              isWinner,
+              gameState
+            });
+          }
+          
+          if (player2Socket) {
+            const isWinner = game.player2 === winner;
+            player2Socket.emit('game_ended', {
+              gameId,
+              result,
+              winner: game.player2,
+              loser: game.player1,
+              isWinner,
+              gameState
+            });
+          }
+          
+          // Remove game from active games
+          games.delete(gameId);
+          
+          // Fallback: Also emit to the game room in case individual socket emissions failed
+          console.log(`🏁 [Game] Emitting fallback game_ended to game room ${gameId}`);
+          io.to(`game_${gameId}`).emit('game_ended', {
+            gameId,
+            result: result,
+            winner: winner,
+            loser: loser,
+            gameState
+          });
+          
+          console.log(`🏁 [Game] Game ${gameId} ended by ${result}. Winner: ${winner}, Loser: ${loser}`);
+        }
       }
     } else {
       socket.emit('error', { message: 'Invalid move' });
@@ -319,6 +416,15 @@ io.on('connection', (socket) => {
 
     socket.join(`game_${gameId}`);
     
+    // Update socket IDs when players rejoin (handles reconnections)
+    if (game.player1 === userId) {
+      game.player1SocketId = socket.id;
+      console.log(`🔄 [Game] Updated player1 socket ID for ${userId}: ${socket.id}`);
+    } else if (game.player2 === userId) {
+      game.player2SocketId = socket.id;
+      console.log(`🔄 [Game] Updated player2 socket ID for ${userId}: ${socket.id}`);
+    }
+    
     // Send game state immediately
     const gameState = game.getGameState();
     socket.emit('game_joined', { gameId, gameState });
@@ -337,22 +443,74 @@ io.on('connection', (socket) => {
     if (!userId) return;
 
     const game = games.get(gameId);
-    if (!game || game.status !== 'active') return; // Changed from 'in_progress' to 'active'
+    if (!game || game.status !== 'active') return;
 
-    if (game.player1 === userId || game.player2 === userId) {
-      game.status = 'completed';
-      game.result = 'resignation';
-      game.winner = game.player1 === userId ? game.player2 : game.player1;
-      
-      // Emit updated game state to all players
-      io.to(`game_${gameId}`).emit('move_made', {
+    console.log(`🏳️ [Game] Player ${userId} resigning from game ${gameId}`);
+    
+    // Determine winner and loser
+    const winner = game.player1 === userId ? game.player2 : game.player1;
+    const loser = userId;
+    
+    // End the game with resignation result
+    game.endGame('resignation', winner, loser);
+    
+    // Get final game state
+    const gameState = game.getGameState();
+    
+    console.log(`🏁 [Game] About to emit game_ended event for resignation`);
+    console.log(`🏁 [Game] Player1 socket ID: ${game.player1SocketId}`);
+    console.log(`🏁 [Game] Player2 socket ID: ${game.player2SocketId}`);
+    
+    // Send different data to each player
+    const player1Socket = io.sockets.sockets.get(game.player1SocketId);
+    const player2Socket = io.sockets.sockets.get(game.player2SocketId);
+    
+    if (player1Socket) {
+      const isWinner = game.player1 === winner;
+      const eventData = {
         gameId,
-        move: null,
-        gameState: game.getGameState()
-      });
-      
-      handleGameEnd(game);
+        result: 'resignation',
+        winner: game.player1,
+        loser: game.player2,
+        isWinner,
+        gameState
+      };
+      console.log(`🏁 [Game] Emitting to player1 (${game.player1}):`, eventData);
+      player1Socket.emit('game_ended', eventData);
+    } else {
+      console.log(`⚠️ [Game] Player1 socket not found for ID: ${game.player1SocketId}`);
     }
+    
+    if (player2Socket) {
+      const isWinner = game.player2 === winner;
+      const eventData = {
+        gameId,
+        result: 'resignation',
+        winner: game.player2,
+        loser: game.player1,
+        isWinner,
+        gameState
+      };
+      console.log(`🏁 [Game] Emitting to player2 (${game.player2}):`, eventData);
+      player2Socket.emit('game_ended', eventData);
+    } else {
+      console.log(`⚠️ [Game] Player2 socket not found for ID: ${game.player2SocketId}`);
+    }
+    
+    // Remove game from active games
+    games.delete(gameId);
+    
+    // Fallback: Also emit to the game room in case individual socket emissions failed
+    console.log(`🏁 [Game] Emitting fallback game_ended to game room ${gameId}`);
+    io.to(`game_${gameId}`).emit('game_ended', {
+      gameId,
+      result: 'resignation',
+      winner: winner,
+      loser: loser,
+      gameState
+    });
+    
+    console.log(`🏁 [Game] Game ${gameId} ended by resignation. Winner: ${winner}, Loser: ${loser}`);
   });
 
   // Disconnect handling
@@ -366,6 +524,10 @@ io.on('connection', (socket) => {
         if (index !== -1) {
           queue.splice(index, 1);
           console.log(`🔄 [Queue] Removed ${userId} from ${timeControl} queue due to disconnect`);
+          
+          // Notify all clients about the updated queue size
+          const queueSize = queue.length;
+          io.emit('queue_update', { timeControl, queueSize });
         }
       }
 

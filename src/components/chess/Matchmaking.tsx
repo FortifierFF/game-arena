@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSocket } from '@/hooks/useSocket';
 import { useAuth } from '@/components/providers/AuthProvider';
 import Icon, { Search, Users } from '@/components/ui/Icon';
@@ -16,6 +16,23 @@ export default function Matchmaking() {
   const { user } = useAuth();
   const { joinQueue, leaveQueue, matchmakingState, isConnected } = useSocket();
   const [selectedTimeControl, setSelectedTimeControl] = useState('10+0');
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
+  // Update current time every second to refresh the timer
+  useEffect(() => {
+    if (matchmakingState.isSearching && matchmakingState.startTime) {
+      // Set initial currentTime to startTime to avoid negative values
+      setCurrentTime(matchmakingState.startTime);
+      
+      const interval = setInterval(() => {
+        setCurrentTime(Date.now());
+      }, 1000);
+      
+      return () => clearInterval(interval);
+    }
+    // Return empty cleanup function when not searching
+    return () => {};
+  }, [matchmakingState.isSearching, matchmakingState.startTime]);
 
   const handleStartSearch = () => {
     if (!user?.id) {
@@ -34,7 +51,7 @@ export default function Matchmaking() {
 
   const formatDuration = (startTime: number | null) => {
     if (!startTime) return '0:00';
-    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const elapsed = Math.max(0, Math.floor((currentTime - startTime) / 1000));
     const minutes = Math.floor(elapsed / 60);
     const seconds = elapsed % 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;

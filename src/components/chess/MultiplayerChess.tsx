@@ -3,8 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { Chess } from 'chess.js';
 import { useSocket } from '@/hooks/useSocket';
+import { useAuth } from '@/components/providers/AuthProvider';
 import { Chessboard } from 'react-chessboard';
 import type { Square } from 'chess.js';
+import { Flag } from 'lucide-react';
+import GameEndModal from './GameEndModal';
 
 interface MultiplayerChessProps {
   gameId: string;
@@ -19,15 +22,89 @@ interface MultiplayerChessProps {
     playerTimes: { white: number; black: number };
     isGameOver: boolean;
     result: string | null;
+    isCheck: boolean;
+    checkColor: 'w' | 'b' | null;
+    winner: string | null;
+    loser: string | null;
   } | null;
 }
 
 export default function MultiplayerChess({ gameId, playerColor, onGameEnd, gameState }: MultiplayerChessProps) {
+  const { user } = useAuth();
   const { joinGame, makeMove, resign } = useSocket();
   const [chess] = useState(() => new Chess());
-  const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [gameStatus, setGameStatus] = useState('waiting');
   const [fen, setFen] = useState(chess.fen());
+  const [localPlayerTimes, setLocalPlayerTimes] = useState({ white: 0, black: 0 });
+  const [showResignModal, setShowResignModal] = useState(false);
+
+  // Real-time countdown timer
+  useEffect(() => {
+    if (!gameState || gameState.isGameOver) return;
+
+    // Initialize local times from game state (convert milliseconds to seconds)
+    if (gameState.playerTimes) {
+      setLocalPlayerTimes({
+        white: Math.floor(gameState.playerTimes.white / 1000),
+        black: Math.floor(gameState.playerTimes.black / 1000)
+      });
+    }
+
+    // Start countdown timer
+    const interval = setInterval(() => {
+      setLocalPlayerTimes(prev => {
+        const newTimes = { ...prev };
+        
+        // Only countdown for the current player
+        if (gameState.currentPlayer === 'white') {
+          newTimes.white = Math.max(0, newTimes.white - 1);
+        } else {
+          newTimes.black = Math.max(0, newTimes.black - 1);
+        }
+        
+        return newTimes;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [gameState?.currentPlayer, gameState?.isGameOver, gameState?.playerTimes]);
+
+  // Check detection and king highlighting
+  useEffect(() => {
+    if (!gameState) return;
+
+    // Clear previous check highlights
+    document.querySelectorAll('.king-in-check').forEach(el => {
+      el.classList.remove('king-in-check');
+    });
+
+    // Use the server's check information for perfect synchronization
+    if (gameState.isCheck && gameState.checkColor) {
+      // Find the king that's in check based on server data
+      const kingSquare = findKingSquare(chess, gameState.checkColor);
+      
+      if (kingSquare) {
+        const kingSquareEl = document.querySelector(`[data-square="${kingSquare}"]`);
+        if (kingSquareEl) {
+          kingSquareEl.classList.add('king-in-check');
+        }
+      }
+    }
+  }, [gameState?.isCheck, gameState?.checkColor, chess]);
+
+  // Helper function to find king's square
+  const findKingSquare = (chessInstance: Chess, color: 'w' | 'b'): string | null => {
+    for (let rank = 0; rank < 8; rank++) {
+      for (let file = 0; file < 8; file++) {
+        const square = `${String.fromCharCode(97 + file)}${8 - rank}` as Square;
+        const piece = chessInstance.get(square);
+        if (piece && piece.type === 'k' && piece.color === color) {
+          return square;
+        }
+      }
+    }
+    return null;
+  };
 
   useEffect(() => {
     if (gameId) {
@@ -46,6 +123,14 @@ export default function MultiplayerChess({ gameId, playerColor, onGameEnd, gameS
       // Update game status
       if (gameState.status) {
         setGameStatus(gameState.status);
+      }
+      
+      // Update local player times when server sends new times
+      if (gameState.playerTimes) {
+        setLocalPlayerTimes({
+          white: Math.floor(gameState.playerTimes.white / 1000),
+          black: Math.floor(gameState.playerTimes.black / 1000)
+        });
       }
       
       // Check if game is over
@@ -68,12 +153,17 @@ export default function MultiplayerChess({ gameId, playerColor, onGameEnd, gameS
     // Only allow dragging on your turn
     if (gameState.currentPlayer !== playerColor) return;
     
-    const legalMoves = chess.moves({ square: square as Square, verbose: true });
-    
     // Clear previous highlights
     document.querySelectorAll('.chess-square-highlight').forEach(el => {
       el.classList.remove('chess-square-highlight');
     });
+    
+    // Clear check highlights when starting to move
+    document.querySelectorAll('.king-in-check').forEach(el => {
+      el.classList.remove('king-in-check');
+    });
+    
+    const legalMoves = chess.moves({ square: square as Square, verbose: true });
     
     // Highlight the source square (piece being dragged)
     const sourceSquareEl = document.querySelector(`[data-square="${square}"]`);
@@ -96,6 +186,11 @@ export default function MultiplayerChess({ gameId, playerColor, onGameEnd, gameS
     // Clear all highlights
     document.querySelectorAll('.chess-square-highlight').forEach(el => {
       el.classList.remove('chess-square-highlight');
+    });
+    
+    // Clear check highlights when move is completed
+    document.querySelectorAll('.king-in-check').forEach(el => {
+      el.classList.remove('king-in-check');
     });
     
     // Handle same position drop (just clear highlights)
@@ -130,70 +225,38 @@ export default function MultiplayerChess({ gameId, playerColor, onGameEnd, gameS
       return false;
     }
     
-    // Make the move locally first
-    const result = chess.move({ from: sourceSquare, to: targetSquare });
-    if (result) {
-      // Send move to server
-      makeMove(gameId, { from: sourceSquare, to: targetSquare });
-      
-      // Update local FEN (will be overridden by server confirmation)
-      setFen(chess.fen());
-      
-      return true;
+    // Try to make the move
+    try {
+      const move = chess.move({
+        from: sourceSquare as Square,
+        to: targetSquare as Square,
+        promotion: 'q' // Always promote to queen for simplicity
+      });
+
+      if (move) {
+        setFen(chess.fen());
+        makeMove(gameId, { from: sourceSquare, to: targetSquare });
+        
+        // Server will send updated game state with check information
+        // No need for local check highlighting anymore
+        
+        return true;
+      }
+    } catch (error) {
+      console.error('Invalid move:', error);
     }
     
     return false;
   };
 
-  const handleSquareClick = (square: string) => {
+  const handleSquareClick = () => {
+    if (!gameState || gameState.isGameOver) return;
     
-    // Check if game is active and it's our turn
-    if (gameStatus !== 'active' || !gameState) {
-      return;
-    }
-
-    // Check if it's our turn
-    const isOurTurn = gameState.currentPlayer === playerColor;
-    if (!isOurTurn) {
-      return;
-    }
-
-    if (selectedSquare) {
-      
-      // Try to make a move
-      const move = {
-        from: selectedSquare as string,
-        to: square as string,
-        promotion: 'q' // Always promote to queen for simplicity
-      };
-
-      try {
-        // Validate move locally first
-        const result = chess.move(move);
-        if (result) {
-          makeMove(gameId, move);
-          setSelectedSquare(null);
-          // Don't update FEN here - wait for server confirmation
-        } else {
-          setSelectedSquare(null);
-        }
-      } catch {
-        setSelectedSquare(null);
-      }
-    } else {
-      
-      // Select square
-      const piece = chess.get(square as Square);
-      
-      if (piece && piece.color === (playerColor === 'white' ? 'w' : 'b')) {
-        setSelectedSquare(square);
-      }
-    }
-    
-  };
-
-  const handleResign = () => {
-    resign(gameId);
+    // Handle square click logic here if needed
+    // For now, just clear any existing highlights
+    document.querySelectorAll('.chess-square-highlight').forEach(el => {
+      el.classList.remove('chess-square-highlight');
+    });
   };
 
   return (
@@ -209,7 +272,7 @@ export default function MultiplayerChess({ gameId, playerColor, onGameEnd, gameS
               You play as: <span className="font-semibold capitalize">{playerColor}</span>
             </div>
             <button
-              onClick={handleResign}
+              onClick={() => setShowResignModal(true)}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors duration-200"
             >
               Resign
@@ -253,8 +316,8 @@ export default function MultiplayerChess({ gameId, playerColor, onGameEnd, gameS
             options={{
               position: fen,
               boardOrientation: playerColor === 'white' ? 'white' : 'black',
-              onSquareClick: ({ square }) => {
-                handleSquareClick(square);
+              onSquareClick: () => {
+                handleSquareClick();
               },
               onPieceDrag: onPieceDragBegin,
               onPieceDrop: ({ sourceSquare, targetSquare }) => onDrop({ sourceSquare, targetSquare }),
@@ -273,15 +336,15 @@ export default function MultiplayerChess({ gameId, playerColor, onGameEnd, gameS
             <div className="flex justify-between">
               <span className="text-gray-600 dark:text-gray-400">White:</span>
               <span className="font-mono text-gray-800 dark:text-white">
-                {Math.floor((gameState?.playerTimes?.white || 0) / 1000 / 60)}:
-                {Math.floor(((gameState?.playerTimes?.white || 0) / 1000) % 60).toString().padStart(2, '0')}
+                {Math.floor(localPlayerTimes.white / 60)}:
+                {(localPlayerTimes.white % 60).toString().padStart(2, '0')}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600 dark:text-gray-400">Black:</span>
               <span className="font-mono text-gray-800 dark:text-white">
-                {Math.floor((gameState?.playerTimes?.black || 0) / 1000 / 60)}:
-                {Math.floor(((gameState?.playerTimes?.black || 0) / 1000) % 60).toString().padStart(2, '0')}
+                {Math.floor(localPlayerTimes.black / 60)}:
+                {(localPlayerTimes.black % 60).toString().padStart(2, '0')}
               </span>
             </div>
           </div>
@@ -305,6 +368,55 @@ export default function MultiplayerChess({ gameId, playerColor, onGameEnd, gameS
           </div>
         </div>
       </div>
+
+      {/* Resign Confirmation Modal */}
+      {showResignModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md mx-4 border border-gray-200 dark:border-white/20">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full mb-4">
+                <Flag className="text-red-500" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">
+                Confirm Resignation
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                Are you sure you want to resign this game? This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowResignModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white rounded-lg transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    resign(gameId);
+                    setShowResignModal(false);
+                  }}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors duration-200"
+                >
+                  Resign Game
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Game End Modal */}
+      <GameEndModal
+        isOpen={!!gameState?.isGameOver}
+        onClose={() => {}} // Modal will be handled by parent component
+        gameResult={gameState?.isGameOver ? {
+          result: gameState.result || 'unknown',
+          winner: gameState.winner || null,
+          loser: gameState.loser || null,
+          isWinner: gameState.winner === user?.id || false,
+          playerColor: playerColor
+        } : null}
+      />
     </div>
   );
 } 

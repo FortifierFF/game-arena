@@ -375,6 +375,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     profile,
     stats,
+    gameStats: [], // Initialize with empty array for now
     status,
     walletStatus,
     walletType,

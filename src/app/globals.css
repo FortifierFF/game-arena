@@ -411,6 +411,98 @@ input[type="range"].slider:not([style*="background"]) {
   border: 2px solid rgba(239, 68, 68, 0.8) !important;
 }
 
+/* King in check highlighting */
+.king-in-check {
+  position: relative;
+  animation: checkEntrance 0.3s ease-out, checkPulse 1.5s ease-in-out infinite 0.3s;
+  background-color: rgba(239, 68, 68, 0.6) !important;
+  border: 3px solid rgba(239, 68, 68, 1) !important;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.8);
+}
+
+/* Quick dramatic shake when check first appears */
+.king-in-check {
+  animation: checkEntrance 0.1s ease-out, checkShake 0.2s ease-in-out 0.3s, checkPulse 1.5s ease-in-out infinite 0.7s;
+}
+
+/* Mobile vibration effect for check */
+@media (hover: none) and (pointer: coarse) {
+  .king-in-check {
+    animation: checkEntrance 0.1s ease-out, checkShake 0.2s ease-in-out 0.3s, checkPulse 1.5s ease-in-out infinite 0.7s;
+  }
+}
+
+@keyframes checkEntrance {
+  0% {
+    transform: scale(0.8) rotate(-5deg);
+    opacity: 0;
+    box-shadow: 0 0 0px rgba(239, 68, 68, 0);
+  }
+  50% {
+    transform: scale(1.1) rotate(2deg);
+    box-shadow: 0 0 30px rgba(239, 68, 68, 1);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.8);
+  }
+}
+
+@keyframes checkPulse {
+  0% {
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.8);
+    background-color: rgba(239, 68, 68, 0.6) !important;
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(239, 68, 68, 1);
+    background-color: rgba(239, 68, 68, 0.8) !important;
+  }
+  100% {
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.8);
+    background-color: rgba(239, 68, 68, 0.6) !important;
+  }
+}
+
+@keyframes checkShake {
+  0%, 100% { 
+    transform: translateX(0) translateY(0) rotate(0deg); 
+  }
+  10% { 
+    transform: translateX(-3px) translateY(-2px) rotate(-1deg); 
+  }
+  20% { 
+    transform: translateX(3px) translateY(2px) rotate(1deg); 
+  }
+  30% { 
+    transform: translateX(-3px) translateY(-2px) rotate(-1deg); 
+  }
+  40% { 
+    transform: translateX(3px) translateY(2px) rotate(1deg); 
+  }
+  50% { 
+    transform: translateX(-2px) translateY(-3px) rotate(-0.8deg); 
+  }
+  60% { 
+    transform: translateX(2px) translateY(3px) rotate(0.8deg); 
+  }
+  70% { 
+    transform: translateX(-2px) translateY(-3px) rotate(-0.8deg); 
+  }
+  80% { 
+    transform: translateX(2px) translateY(3px) rotate(0.8deg); 
+  }
+  90% { 
+    transform: translateX(-1px) translateY(-1px) rotate(-0.3deg); 
+  }
+}
+
+@keyframes checkVibrate {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-1px); }
+  75% { transform: translateX(1px); }
+}
+
 @keyframes illegalShake {
   0%, 100% {
     transform: translateX(0);

@@ -11,9 +11,10 @@ interface GameState {
   playerTimes: { white: number; black: number };
   isGameOver: boolean;
   result: string | null;
-  // Add matchmaking data
-  opponent?: string;
-  color?: 'white' | 'black';
+  isCheck: boolean;
+  checkColor: 'w' | 'b' | null;
+  winner: string | null;
+  loser: string | null;
 }
 
 interface MatchmakingState {
@@ -28,11 +29,21 @@ interface GameSocket extends Socket {
   walletAddress?: string;
 }
 
+export interface GameEndData {
+  gameId: string;
+  result: string;
+  winner: string | null;
+  loser: string | null;
+  isWinner: boolean; // New field to determine if current player won
+  gameState?: GameState;
+}
+
 // Socket connection
 const SOCKET_URL = process.env['NEXT_PUBLIC_SOCKET_URL'] || 'http://localhost:3001';
 
-// Global callback registry that survives hook recreations
-let globalGameFoundCallback: ((gameData: { gameId: string; opponent: string; color: 'white' | 'black' }) => void) | null = null;
+// Global callback registry for game events - survives Fast Refresh
+let globalGameFoundCallback: ((data: { gameId: string; opponent: string; color: 'white' | 'black' }) => void) | null = null;
+let globalGameEndCallback: ((data: GameEndData) => void) | null = null;
 
 export const useSocket = () => {
   const socketRef = useRef<GameSocket | null>(null);
@@ -46,7 +57,8 @@ export const useSocket = () => {
   const [currentGame, setCurrentGame] = useState<GameState | null>(null);
   
   // Callback system for game events - use global registry
-  const gameFoundCallbackRef = useRef<((gameData: { gameId: string; opponent: string; color: 'white' | 'black' }) => void) | null>(null);
+  const gameFoundCallbackRef = useRef<((data: { gameId: string; opponent: string; color: 'white' | 'black' }) => void) | null>(null);
+  const gameEndCallbackRef = useRef<((data: GameEndData) => void) | null>(null);
 
   // Connection persistence
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -54,7 +66,7 @@ export const useSocket = () => {
   const maxReconnectAttempts = 5;
 
   // Function to register game found callback
-  const onGameFound = useCallback((callback: (gameData: { gameId: string; opponent: string; color: 'white' | 'black' }) => void) => {
+  const onGameFound = useCallback((callback: (data: { gameId: string; opponent: string; color: 'white' | 'black' }) => void) => {
     gameFoundCallbackRef.current = callback;
     globalGameFoundCallback = callback; // Store in global registry
   }, []);
@@ -180,8 +192,16 @@ export const useSocket = () => {
       }
     });
 
-    socket.on('game_ended', () => {
+    socket.on('game_ended', (data: GameEndData) => {
+      console.log('🏁 [useSocket] Game ended:', data);
       setCurrentGame(null);
+      
+      // Call the registered callback if it exists
+      if (gameEndCallbackRef.current) {
+        gameEndCallbackRef.current(data);
+      } else if (globalGameEndCallback) {
+        globalGameEndCallback(data);
+      }
     });
 
     socket.on('error', (error) => {
@@ -285,6 +305,14 @@ export const useSocket = () => {
     matchmakingState,
     gameState: currentGame,
     onGameFound,
-    offGameFound
+    offGameFound,
+    onGameEnd: (callback: (data: GameEndData) => void) => {
+      gameEndCallbackRef.current = callback;
+      globalGameEndCallback = callback; // Store in global registry
+    },
+    offGameEnd: () => {
+      gameEndCallbackRef.current = null;
+      globalGameEndCallback = null; // Clear global registry
+    }
   };
 }; 
