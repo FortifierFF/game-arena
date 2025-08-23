@@ -6,13 +6,14 @@
  * Actions area for login button, user menu, and theme toggle
  */
 
-import Icon, { User, LogOut, Settings } from '@/components/ui/Icon';
+import Icon, { User, LogOut } from '@/components/ui/Icon';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import LanguageSwitcher from '@/components/ui/LanguageSwitcher';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useState, useEffect, useRef } from 'react';
 import LoginModal from '@/components/auth/LoginModal';
+import Link from 'next/link';
 
 
 interface NavBarActionsProps {
@@ -86,13 +87,14 @@ export default function NavBarActions({ className }: NavBarActionsProps) {
             {/* User Dropdown Menu */}
             {showUserMenu && (
               <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700 animate-fade-in">
-                <button
+                <Link
+                  href="/profile"
                   onClick={() => setShowUserMenu(false)}
                   className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left"
                 >
-                  <Icon icon={Settings} size="sm" />
+                  <Icon icon={User} size="sm" />
                   <span>Profile</span>
-                </button>
+                </Link>
                 
                 <div className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
                 

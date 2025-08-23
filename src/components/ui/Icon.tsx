@@ -75,6 +75,15 @@ export {
   Wallet,
   AlertCircle,
   CheckCircle,
+  Edit3,
+  Save,
+  Mail,
+  Phone,
+  MapPin,
+  Clock,
+  TrendingUp,
+  Download,
+  Share2,
 } from 'lucide-react'; 
 
 
