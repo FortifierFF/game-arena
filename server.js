@@ -1,6 +1,12 @@
+// Load environment variables first
+require('dotenv').config({ path: '.env.local' });
+
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const { Chess } = require('chess.js');
+
+// Database integration
+const { saveChessGame } = require('./src/lib/chessDatabase');
 
 const httpServer = createServer();
 const io = new Server(httpServer, {
@@ -36,6 +42,11 @@ class ChessGame {
     this.loser = null;
     this.player1SocketId = null;
     this.player2SocketId = null;
+    
+    // Track detailed move data for database
+    this.detailedMoves = [];
+    this.player1Color = 'white';
+    this.player2Color = 'black';
   }
 
   start() {
@@ -59,6 +70,21 @@ class ChessGame {
           fen: this.chess.fen(),
           timestamp: Date.now()
         });
+
+        // Collect detailed move data for database
+        const moveData = {
+          moveNumber: Math.floor(this.detailedMoves.length / 2) + 1,
+          playerId: playerId,
+          fromSquare: result.from,
+          toSquare: result.to,
+          piece: result.piece,
+          moveNotation: result.san,
+          isCapture: result.captured !== undefined,
+          isCheck: this.chess.isCheck(),
+          isCheckmate: this.chess.isCheckmate(),
+          timestampMs: Date.now() - this.startTime
+        };
+        this.detailedMoves.push(moveData);
 
         // Update time
         const now = Date.now();
@@ -94,6 +120,27 @@ class ChessGame {
       // Legacy game ending logic (for backward compatibility)
       this.result = this.getGameResult();
     }
+  }
+
+  // Prepare game data for database storage
+  prepareGameDataForDatabase() {
+    const gameDuration = Date.now() - this.startTime;
+    
+    return {
+      gameId: this.id,
+      player1Id: this.player1,
+      player2Id: this.player2,
+      player1Color: this.player1Color,
+      player2Color: this.player2Color,
+      timeControl: this.timeControl,
+      result: this.result,
+      winnerId: this.winner,
+      loserId: this.loser,
+      totalMoves: this.detailedMoves.length,
+      gameDurationMs: gameDuration,
+      finalFen: this.chess.fen(),
+      moves: this.detailedMoves
+    };
   }
 
   getGameState() {
@@ -378,6 +425,16 @@ io.on('connection', (socket) => {
           // Remove game from active games
           games.delete(gameId);
           
+          // Save game to database
+          try {
+            const gameData = game.prepareGameDataForDatabase();
+            saveChessGame(gameData).catch(error => {
+              console.error(`❌ [DB] Error saving game ${gameId} to database:`, error);
+            });
+          } catch (error) {
+            console.error(`❌ [DB] Error preparing game data for database:`, error);
+          }
+          
           // Fallback: Also emit to the game room in case individual socket emissions failed
           console.log(`🏁 [Game] Emitting fallback game_ended to game room ${gameId}`);
           io.to(`game_${gameId}`).emit('game_ended', {
@@ -499,6 +556,16 @@ io.on('connection', (socket) => {
     
     // Remove game from active games
     games.delete(gameId);
+    
+    // Save game to database
+    try {
+      const gameData = game.prepareGameDataForDatabase();
+      saveChessGame(gameData).catch(error => {
+        console.error(`❌ [DB] Error saving game ${gameId} (resignation) to database:`, error);
+      });
+    } catch (error) {
+      console.error(`❌ [DB] Error preparing game data for database (resignation):`, error);
+    }
     
     // Fallback: Also emit to the game room in case individual socket emissions failed
     console.log(`🏁 [Game] Emitting fallback game_ended to game room ${gameId}`);

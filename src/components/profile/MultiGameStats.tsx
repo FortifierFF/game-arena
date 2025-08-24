@@ -64,7 +64,6 @@ export default function MultiGameStats({ gameStats }: MultiGameStatsProps) {
       {/* Tab Navigation */}
       <div className="flex flex-wrap gap-2 items-start">
         {tabs.map((tab) => {
-          const IconComponent = tab.icon;
           const isActive = activeTab === tab.id;
           const hasData = tab.count > 0;
           
@@ -82,7 +81,7 @@ export default function MultiGameStats({ gameStats }: MultiGameStatsProps) {
               disabled={!hasData && tab.id !== 'overview'}
               style={{ height: 'auto', minHeight: 'auto' }}
             >
-              <IconComponent size="sm" />
+              <Icon icon={tab.icon} size="sm" />
               <span>{tab.label}</span>
               {hasData && (
                 <span className={`px-2 py-1 rounded-full text-xs ${
