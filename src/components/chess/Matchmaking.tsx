@@ -14,9 +14,10 @@ const timeControls = [
 
 export default function Matchmaking() {
   const { user } = useAuth();
-  const { joinQueue, leaveQueue, matchmakingState, isConnected } = useSocket();
+  const { joinQueue, leaveQueue, matchmakingState, isConnected, authenticate } = useSocket();
   const [selectedTimeControl, setSelectedTimeControl] = useState('10+0');
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   // Update current time every second to refresh the timer
   useEffect(() => {
@@ -34,19 +35,47 @@ export default function Matchmaking() {
     return () => {};
   }, [matchmakingState.isSearching, matchmakingState.startTime]);
 
-  const handleStartSearch = () => {
+  // Auto-authenticate when user changes
+  useEffect(() => {
+    if (user?.id && user?.wallet_address && isConnected) {
+      console.log('🔄 Auto-authenticating user:', user.id);
+      authenticate(user.id, user.wallet_address);
+    }
+  }, [user?.id, user?.wallet_address, isConnected, authenticate]);
+
+  const handleStartSearch = async () => {
     if (!user?.id) {
       console.error('No user ID available');
       return;
     }
 
-    console.log('🎯 Starting search with time control:', selectedTimeControl);
-    joinQueue(selectedTimeControl, 1200); // Default rating for now
+    // Ensure authentication is complete before joining queue
+    if (!isConnected) {
+      console.log('🔄 Waiting for connection...');
+      return;
+    }
+
+    setIsAuthenticating(true);
+    
+    try {
+      // Small delay to ensure auto-authentication completes
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      console.log('🎯 Starting search with time control:', selectedTimeControl);
+      joinQueue(selectedTimeControl, 1200); // Default rating for now
+    } catch (error) {
+      console.error('❌ Error starting search:', error);
+    } finally {
+      setIsAuthenticating(false);
+    }
   };
 
   const handleCancelSearch = () => {
     console.log('🚪 Cancelling search');
     leaveQueue();
+    
+    // Also reset the local time state to stop the timer
+    setCurrentTime(Date.now());
   };
 
   const formatDuration = (startTime: number | null) => {
@@ -146,10 +175,13 @@ export default function Matchmaking() {
 
           <button
             onClick={handleStartSearch}
-            className="w-full py-3 px-6 bg-gradient-to-r from-cyan-400 to-purple-500 text-white font-semibold rounded-xl hover:from-cyan-500 hover:to-purple-600 transition-all duration-200"
+            disabled={isAuthenticating}
+            className={`w-full py-3 px-6 bg-gradient-to-r from-cyan-400 to-purple-500 text-white font-semibold rounded-xl hover:from-cyan-500 hover:to-purple-600 transition-all duration-200 ${
+              isAuthenticating ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
           >
             <Icon icon={Search} size="sm" className="mr-2" />
-            Find Opponent
+            {isAuthenticating ? 'Authenticating...' : 'Find Opponent'}
           </button>
         </div>
 

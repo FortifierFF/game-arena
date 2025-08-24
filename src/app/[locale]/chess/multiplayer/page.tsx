@@ -11,7 +11,6 @@ export default function MultiplayerChessPage() {
   const { user } = useAuth();
   const {
     authenticate,
-    leaveQueue,
     joinGame,
     gameState: socketGameState,
     onGameFound,
@@ -34,13 +33,7 @@ export default function MultiplayerChessPage() {
   const gameFoundCallbackRef = useRef<((data: { gameId: string; opponent: string; color: 'white' | 'black' }) => void) | null>(null);
   const gameEndCallbackRef = useRef<((data: { gameId: string; result: string; winner: string | null; loser: string | null; isWinner?: boolean; gameState?: unknown }) => void) | null>(null);
 
-  // Leave matchmaking queue and reset game state
-  const handleLeaveQueue = useCallback(() => {
-    leaveQueue();
-    // Clear any previous game data
-    setGameData(null);
-    setGameEndData(null);
-  }, [leaveQueue]);
+
 
   // Handle finding new opponent
   const handleFindNewOpponent = useCallback(() => {
@@ -188,14 +181,6 @@ export default function MultiplayerChessPage() {
       {gameState === 'matchmaking' && (
         <div className="max-w-2xl mx-auto">
           <Matchmaking />
-          <div className="mt-4 text-center">
-            <button
-              onClick={handleLeaveQueue}
-              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition-colors duration-200"
-            >
-              Leave Queue
-            </button>
-          </div>
         </div>
       )}
 

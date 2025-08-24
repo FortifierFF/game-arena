@@ -222,9 +222,20 @@ export const useSocket = () => {
   // Authentication function
   const authenticate = useCallback((userId: string, walletAddress: string) => {
     if (socketRef.current) {
+      // Update local state immediately
+      setAuthState({ userId, walletAddress });
+      
+      // Update socket properties
       socketRef.current.userId = userId;
       socketRef.current.walletAddress = walletAddress;
+      
+      // Send authentication to server
       socketRef.current.emit('authenticate', { userId, walletAddress });
+      
+      // Store in sessionStorage for persistence
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('socket_auth', JSON.stringify({ userId, walletAddress }));
+      }
     } else {
       console.error('❌ [useSocket] Cannot authenticate: socket not ready');
     }
@@ -266,6 +277,14 @@ export const useSocket = () => {
   const leaveQueue = useCallback(() => {
     if (socketRef.current) {
       socketRef.current.emit('leave_queue');
+      
+      // Reset local matchmaking state immediately
+      setMatchmakingState({
+        isSearching: false,
+        timeControl: '',
+        startTime: null,
+        queueSize: 0
+      });
     }
   }, []);
 

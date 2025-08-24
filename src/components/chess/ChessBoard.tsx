@@ -347,7 +347,7 @@ export default function ChessBoard() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="mx-auto p-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
