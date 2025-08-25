@@ -1,13 +1,18 @@
-// Load environment variables first
-require('dotenv').config({ path: '.env.local' });
+// =============================================================================
+// CHESS MULTIPLAYER SERVER - CLEANED & ORGANIZED VERSION
+// =============================================================================
+// This file handles real-time multiplayer chess games with matchmaking
+// All original functionality preserved, just cleaned up and better organized
 
+require('dotenv').config({ path: '.env.local' });
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const { Chess } = require('chess.js');
-
-// Database integration
 const { saveChessGame } = require('./src/lib/chessDatabase');
 
+// =============================================================================
+// SERVER SETUP
+// =============================================================================
 const httpServer = createServer();
 const io = new Server(httpServer, {
   cors: {
@@ -16,12 +21,16 @@ const io = new Server(httpServer, {
   }
 });
 
-// Game state management
-const games = new Map();
-const userSessions = new Map();
-const matchmakingQueue = new Map(); // Map<timeControl, Array<{userId, socketId, rating, timestamp}>>
+// =============================================================================
+// GLOBAL STATE MANAGEMENT
+// =============================================================================
+const games = new Map();                    // Active games
+const userSessions = new Map();             // User authentication sessions
+const matchmakingQueue = new Map();         // Matchmaking queues by time control
 
-// Chess game class
+// =============================================================================
+// CHESS GAME CLASS
+// =============================================================================
 class ChessGame {
   constructor(player1, player2, timeControl) {
     this.id = generateGameId();
@@ -37,42 +46,44 @@ class ChessGame {
       black: parseTimeControl(timeControl)
     };
     this.startTime = Date.now();
+    this.lastMoveTime = Date.now();
     this.result = null;
     this.winner = null;
     this.loser = null;
     this.player1SocketId = null;
     this.player2SocketId = null;
     
-    // Track detailed move data for database
+    // Database tracking
     this.detailedMoves = [];
     this.player1Color = 'white';
     this.player2Color = 'black';
   }
 
   start() {
-    this.status = 'active'; // Changed from 'in_progress' to 'active' to match client expectations
+    this.status = 'active';
     this.startTime = Date.now();
     this.lastMoveTime = Date.now();
   }
 
   makeMove(move, playerId) {
-    if (this.status !== 'active') return false; // Changed from 'in_progress' to 'active'
+    if (this.status !== 'active') return false;
     
-    // Validate player turn
+    // Validate it's the player's turn
     const expectedPlayer = this.currentPlayer === 'white' ? this.player1 : this.player2;
     if (playerId !== expectedPlayer) return false;
 
     try {
       const result = this.chess.move(move);
       if (result) {
+        // Record move
         this.moves.push({
           move: result.san,
           fen: this.chess.fen(),
           timestamp: Date.now()
         });
 
-        // Collect detailed move data for database
-        const moveData = {
+        // Track detailed move data for database
+        this.detailedMoves.push({
           moveNumber: Math.floor(this.detailedMoves.length / 2) + 1,
           playerId: playerId,
           fromSquare: result.from,
@@ -83,10 +94,9 @@ class ChessGame {
           isCheck: this.chess.isCheck(),
           isCheckmate: this.chess.isCheckmate(),
           timestampMs: Date.now() - this.startTime
-        };
-        this.detailedMoves.push(moveData);
+        });
 
-        // Update time
+        // Update time control
         const now = Date.now();
         const timeSpent = now - this.lastMoveTime;
         this.playerTimes[this.currentPlayer] -= timeSpent;
@@ -95,7 +105,7 @@ class ChessGame {
         // Switch players
         this.currentPlayer = this.currentPlayer === 'white' ? 'black' : 'white';
 
-        // Check game end conditions
+        // Check if game is over
         if (this.chess.isGameOver()) {
           this.status = 'completed';
           this.endGame();
@@ -112,20 +122,16 @@ class ChessGame {
   endGame(result, winner, loser) {
     this.status = 'completed';
     if (result && winner && loser) {
-      // New game ending logic
       this.result = result;
       this.winner = winner;
       this.loser = loser;
     } else {
-      // Legacy game ending logic (for backward compatibility)
       this.result = this.getGameResult();
     }
   }
 
-  // Prepare game data for database storage
   prepareGameDataForDatabase() {
     const gameDuration = Date.now() - this.startTime;
-    
     return {
       gameId: this.id,
       player1Id: this.player1,
@@ -144,7 +150,7 @@ class ChessGame {
   }
 
   getGameState() {
-    const gameState = {
+    return {
       id: this.id,
       fen: this.chess.fen(),
       status: this.status,
@@ -156,492 +162,384 @@ class ChessGame {
       isCheck: this.chess.isCheck(),
       checkColor: this.chess.isCheck() ? this.chess.turn() : null
     };
-    
-    return gameState;
   }
 
   getGameResult() {
     if (this.chess.isCheckmate()) {
       return this.currentPlayer === 'white' ? 'black' : 'white';
-    } else if (this.chess.isDraw()) {
-      return 'draw';
-    } else if (this.chess.isStalemate()) {
+    } else if (this.chess.isDraw() || this.chess.isStalemate()) {
       return 'draw';
     }
     return null;
   }
 }
 
-// Utility functions
+// =============================================================================
+// UTILITY FUNCTIONS
+// =============================================================================
 function generateGameId() {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
 function parseTimeControl(timeControl) {
-  // Handle different time control formats
   if (timeControl.includes('+')) {
     const [minutes, increment] = timeControl.split('+').map(Number);
-    const totalSeconds = (minutes * 60) + (increment || 0);
-    return totalSeconds * 1000; // Convert to milliseconds
+    return ((minutes * 60) + (increment || 0)) * 1000;
   } else {
-    // Just minutes
-    const minutes = parseInt(timeControl) || 10; // Default to 10 minutes
-    const totalSeconds = minutes * 60;
-    return totalSeconds * 1000; // Convert to milliseconds
+    const minutes = parseInt(timeControl) || 10;
+    return (minutes * 60) * 1000;
   }
 }
 
-// Matchmaking logic
+// =============================================================================
+// MATCHMAKING FUNCTIONS
+// =============================================================================
 function findMatch(userId, timeControl, rating) {
-  if (!matchmakingQueue.has(timeControl)) {
-    return null;
-  }
-
-  const queue = matchmakingQueue.get(timeControl);
+  if (!matchmakingQueue.has(timeControl)) return null;
   
-  // Find a compatible opponent (not the same user)
-  const opponent = queue.find(player => 
+  const queue = matchmakingQueue.get(timeControl);
+  return queue.find(player => 
     player.userId !== userId && 
     Math.abs(player.rating - rating) <= 200
   );
-
-  if (opponent) {
-    return opponent;
-  }
-
-  return null;
 }
 
-// Socket connection handling
+function removeFromAllQueues(userId) {
+  for (const [timeControl, queue] of matchmakingQueue.entries()) {
+    const index = queue.findIndex(player => player.userId === userId);
+    if (index !== -1) {
+      queue.splice(index, 1);
+      console.log(`🔄 [Queue] Removed ${userId} from ${timeControl} queue`);
+    }
+  }
+}
+
+function updateQueueSizes() {
+  for (const [timeControl, queue] of matchmakingQueue.entries()) {
+    io.emit('queue_update', { timeControl, queueSize: queue.length });
+  }
+}
+
+// =============================================================================
+// GAME MANAGEMENT FUNCTIONS
+// =============================================================================
+function createGame(player1, player2, timeControl) {
+  const game = new ChessGame(player1, player2, timeControl);
+  games.set(game.id, game);
+  game.start();
+  return game;
+}
+
+function endGame(gameId, result, winner, loser) {
+  const game = games.get(gameId);
+  if (!game) return;
+  
+  game.endGame(result, winner, loser);
+  const gameState = game.getGameState();
+  
+  // Save to database
+  try {
+    const gameData = game.prepareGameDataForDatabase();
+    saveChessGame(gameData).catch(error => {
+      console.error(`❌ [DB] Error saving game ${gameId}:`, error);
+    });
+  } catch (error) {
+    console.error(`❌ [DB] Error preparing game data:`, error);
+  }
+  
+  // Remove from active games
+  games.delete(gameId);
+  
+  return gameState;
+}
+
+function handlePlayerDisconnect(userId) {
+  // Remove from matchmaking
+  removeFromAllQueues(userId);
+  updateQueueSizes();
+  
+  // Handle active games
+  for (const [gameId, game] of games.entries()) {
+    if (game.status === 'active' && 
+        (game.player1 === userId || game.player2 === userId)) {
+      
+      const gameDuration = Date.now() - (game.startTime || Date.now());
+      
+      if (gameDuration > 30000 && game.moves.length < 2) {
+        console.log(`⚠️ [Game] Game ${gameId} abandoned due to disconnect`);
+        game.status = 'abandoned';
+      } else if (game.moves.length >= 2) {
+        console.log(`🏁 [Game] Game ${gameId} completed due to disconnect`);
+        game.status = 'completed';
+        game.result = 'abandoned';
+        game.winner = game.player1 === userId ? game.player2 : game.player1;
+      } else {
+        console.log(`⏳ [Game] Game ${gameId} waiting for reconnection`);
+        continue;
+      }
+      
+      endGame(gameId, game.result, game.winner, game.loser);
+    }
+  }
+}
+
+// =============================================================================
+// SOCKET EVENT HANDLERS
+// =============================================================================
+function handleAuthentication(socket, data) {
+  const { userId, walletAddress } = data;
+  userSessions.set(socket.id, { userId, walletAddress });
+  socket.userId = userId;
+  socket.walletAddress = walletAddress;
+  
+  console.log('🔐 User authenticated:', userId);
+  socket.emit('authenticated', { userId, walletAddress });
+  
+  // Send current queue sizes
+  updateQueueSizes();
+}
+
+function handleJoinQueue(socket, data) {
+  const { timeControl, rating } = data;
+  const userId = socket.userId;
+  
+  if (!userId) {
+    socket.emit('error', { message: 'Not authenticated' });
+    return;
+  }
+
+  console.log(`🎯 [Queue] User ${userId} joining ${timeControl} queue`);
+
+  // Remove from existing queues
+  removeFromAllQueues(userId);
+
+  // Add to new queue
+  if (!matchmakingQueue.has(timeControl)) {
+    matchmakingQueue.set(timeControl, []);
+  }
+
+  const playerData = {
+    userId,
+    socketId: socket.id,
+    rating: rating || 1200,
+    timestamp: Date.now()
+  };
+
+  matchmakingQueue.get(timeControl).push(playerData);
+  
+  socket.emit('queue_joined', { queueId: generateGameId(), timeControl });
+  updateQueueSizes();
+
+  // Try to find a match immediately
+  const opponent = findMatch(userId, timeControl, rating || 1200);
+  if (opponent) {
+    createMatch(userId, opponent, timeControl, socket);
+  }
+}
+
+function handleLeaveQueue(socket) {
+  const userId = socket.userId;
+  if (!userId) return;
+
+  console.log(`🚪 [Queue] User ${userId} leaving all queues`);
+  removeFromAllQueues(userId);
+  updateQueueSizes();
+  socket.emit('queue_left');
+}
+
+function handleMakeMove(socket, data) {
+  const { gameId, move } = data;
+  const userId = socket.userId;
+  
+  if (!userId) return;
+
+  const game = games.get(gameId);
+  if (!game) {
+    socket.emit('error', { message: 'Game not found' });
+    return;
+  }
+
+  if (game.makeMove(move, userId)) {
+    io.to(`game_${gameId}`).emit('move_made', {
+      gameId,
+      move,
+      gameState: game.getGameState()
+    });
+
+    // Check if game is over
+    if (game.chess.isGameOver()) {
+      let result, winner, loser;
+      
+      if (game.chess.isCheckmate()) {
+        result = 'checkmate';
+        winner = userId;
+        loser = game.player1 === userId ? game.player2 : game.player1;
+      } else if (game.chess.isDraw() || game.chess.isStalemate()) {
+        result = game.chess.isDraw() ? 'draw' : 'stalemate';
+        winner = null;
+        loser = null;
+      }
+      
+      if (result) {
+        endGame(gameId, result, winner, loser);
+        
+        // Notify players
+        const gameState = game.getGameState();
+        io.to(`game_${gameId}`).emit('game_ended', {
+          gameId,
+          result,
+          winner,
+          loser,
+          gameState
+        });
+      }
+    }
+  } else {
+    socket.emit('error', { message: 'Invalid move' });
+  }
+}
+
+function handleJoinGame(socket, data) {
+  const { gameId } = data;
+  const userId = socket.userId;
+  
+  if (!userId) return;
+
+  const game = games.get(gameId);
+  if (!game) {
+    socket.emit('error', { message: 'Game not found' });
+    return;
+  }
+
+  if (game.player1 !== userId && game.player2 !== userId) {
+    socket.emit('error', { message: 'Not authorized to join this game' });
+    return;
+  }
+
+  socket.join(`game_${gameId}`);
+  
+  // Update socket IDs for reconnections
+  if (game.player1 === userId) {
+    game.player1SocketId = socket.id;
+  } else if (game.player2 === userId) {
+    game.player2SocketId = socket.id;
+  }
+  
+  // Send current game state
+  const gameState = game.getGameState();
+  socket.emit('game_joined', { gameId, gameState });
+}
+
+function handleResign(socket, data) {
+  const { gameId } = data;
+  const userId = socket.userId;
+  
+  if (!userId) return;
+
+  const game = games.get(gameId);
+  if (!game || game.status !== 'active') return;
+
+  console.log(`🏳️ [Game] Player ${userId} resigning from game ${gameId}`);
+  
+  const winner = game.player1 === userId ? game.player2 : game.player1;
+  const loser = userId;
+  
+  const gameState = endGame(gameId, 'resignation', winner, loser);
+  
+  // Notify players
+  io.to(`game_${gameId}`).emit('game_ended', {
+    gameId,
+    result: 'resignation',
+    winner,
+    loser,
+    gameState
+  });
+}
+
+function createMatch(player1Id, opponent, timeControl, player1Socket) {
+  console.log(`🎮 [Match] Creating game between ${player1Id} and ${opponent.userId}`);
+  
+  // Remove both players from queue
+  const queue = matchmakingQueue.get(timeControl);
+  const player1Index = queue.findIndex(p => p.userId === player1Id);
+  const player2Index = queue.findIndex(p => p.userId === opponent.userId);
+  
+  if (player1Index !== -1) queue.splice(player1Index, 1);
+  if (player2Index !== -1) queue.splice(player2Index, 1);
+  
+  updateQueueSizes();
+
+  // Create game
+  const game = createGame(player1Id, opponent.userId, timeControl);
+  game.player1SocketId = player1Socket.id;
+  game.player2SocketId = opponent.socketId;
+
+  // Notify both players
+  player1Socket.emit('game_found', { 
+    gameId: game.id, 
+    opponent: opponent.userId,
+    color: 'white'
+  });
+
+  const opponentSocket = io.sockets.sockets.get(opponent.socketId);
+  if (opponentSocket) {
+    opponentSocket.emit('game_found', { 
+      gameId: game.id, 
+      opponent: player1Id,
+      color: 'black'
+    });
+  }
+
+  console.log(`🎮 [Match] Game ${game.id} created and players notified`);
+}
+
+// =============================================================================
+// SOCKET CONNECTION HANDLING
+// =============================================================================
 io.on('connection', (socket) => {
   console.log('🔌 User connected:', socket.id);
 
-  // User authentication
-  socket.on('authenticate', (data) => {
-    const { userId, walletAddress } = data;
-    userSessions.set(socket.id, { userId, walletAddress });
-    socket.userId = userId;
-    socket.walletAddress = walletAddress;
-    console.log('🔐 User authenticated:', userId);
-    
-    socket.emit('authenticated', { userId, walletAddress });
-    
-    // Send current queue sizes to the newly authenticated client
-    for (const [timeControl, queue] of matchmakingQueue.entries()) {
-      socket.emit('queue_update', { timeControl, queueSize: queue.length });
-    }
-  });
+  // Set up event handlers
+  socket.on('authenticate', (data) => handleAuthentication(socket, data));
+  socket.on('join_queue', (data) => handleJoinQueue(socket, data));
+  socket.on('leave_queue', () => handleLeaveQueue(socket));
+  socket.on('make_move', (data) => handleMakeMove(socket, data));
+  socket.on('join_game', (data) => handleJoinGame(socket, data));
+  socket.on('resign', (data) => handleResign(socket, data));
+  socket.on('ping', () => socket.emit('pong'));
 
-  // Join matchmaking queue
-  socket.on('join_queue', (data) => {
-    const { timeControl, rating } = data;
-    const userId = socket.userId;
-    
-    if (!userId) {
-      console.error('❌ [Queue] User not authenticated');
-      socket.emit('error', { message: 'Not authenticated' });
-      return;
-    }
-
-    console.log(`🎯 [Queue] User ${userId} joining ${timeControl} queue with rating ${rating}`);
-
-    // Remove from any existing queue
-    for (const [tc, queue] of matchmakingQueue.entries()) {
-      const index = queue.findIndex(player => player.userId === userId);
-      if (index !== -1) {
-        queue.splice(index, 1);
-        console.log(`🔄 [Queue] Removed ${userId} from ${tc} queue`);
-      }
-    }
-
-    // Add to new queue
-    if (!matchmakingQueue.has(timeControl)) {
-      matchmakingQueue.set(timeControl, []);
-    }
-
-    const playerData = {
-      userId,
-      socketId: socket.id,
-      rating: rating || 1200,
-      timestamp: Date.now()
-    };
-
-    matchmakingQueue.get(timeControl).push(playerData);
-    
-    console.log(`✅ [Queue] User ${userId} added to ${timeControl} queue`);
-    console.log(`📊 [Queue] ${timeControl} queue now has ${matchmakingQueue.get(timeControl).length} players`);
-
-    socket.emit('queue_joined', { queueId: generateGameId(), timeControl });
-
-    // Notify all clients about the updated queue size
-    const queueSize = matchmakingQueue.get(timeControl).length;
-    io.emit('queue_update', { timeControl, queueSize });
-
-    // Try to find a match immediately
-    const opponent = findMatch(userId, timeControl, rating || 1200);
-    
-    if (opponent) {
-      console.log(`🎮 [Match] Creating game between ${userId} and ${opponent.userId}`);
-      
-      // Remove both players from queue
-      const queue = matchmakingQueue.get(timeControl);
-      const player1Index = queue.findIndex(p => p.userId === userId);
-      const player2Index = queue.findIndex(p => p.userId === opponent.userId);
-      
-      if (player1Index !== -1) queue.splice(player1Index, 1);
-      if (player2Index !== -1) queue.splice(player2Index, 1);
-      
-      console.log(`🔄 [Queue] Removed matched players from ${timeControl} queue. Queue now has ${queue.length} players`);
-
-      // Notify all clients about the updated queue size
-      const queueSize = queue.length;
-      io.emit('queue_update', { timeControl, queueSize });
-
-      // Create game
-      const game = new ChessGame(userId, opponent.userId, timeControl);
-      games.set(game.id, game);
-      game.start();
-      
-      // Store socket IDs for both players in the game
-      game.player1SocketId = socket.id;
-      game.player2SocketId = opponent.socketId;
-
-      // Notify both players
-      socket.emit('game_found', { 
-        gameId: game.id, 
-        opponent: opponent.userId,
-        color: 'white'
-      });
-
-      const opponentSocket = io.sockets.sockets.get(opponent.socketId);
-      if (opponentSocket) {
-        opponentSocket.emit('game_found', { 
-          gameId: game.id, 
-          opponent: userId,
-          color: 'black'
-        });
-      }
-
-      console.log(`🎮 [Match] Game ${game.id} created and players notified`);
-    }
-  });
-
-  // Leave matchmaking queue
-  socket.on('leave_queue', () => {
-    const userId = socket.userId;
-    if (!userId) return;
-
-    console.log(`🚪 [Queue] User ${userId} leaving all queues`);
-
-    for (const [timeControl, queue] of matchmakingQueue.entries()) {
-      const index = queue.findIndex(player => player.userId === userId);
-      if (index !== -1) {
-        queue.splice(index, 1);
-        console.log(`🔄 [Queue] Removed ${userId} from ${timeControl} queue`);
-        
-        // Notify all clients about the updated queue size
-        const queueSize = queue.length;
-        io.emit('queue_update', { timeControl, queueSize });
-      }
-    }
-
-    socket.emit('queue_left');
-  });
-
-  // Make a move
-  socket.on('make_move', (data) => {
-    const { gameId, move } = data;
-    const userId = socket.userId;
-    
-    if (!userId) return;
-
-    const game = games.get(gameId);
-    if (!game) {
-      socket.emit('error', { message: 'Game not found' });
-      return;
-    }
-
-    if (game.makeMove(move, userId)) {
-      io.to(`game_${gameId}`).emit('move_made', {
-        gameId,
-        move,
-        gameState: game.getGameState()
-      });
-
-      // Check if the game is over after this move
-      if (game.chess.isGameOver()) {
-        let result, winner, loser;
-        
-        if (game.chess.isCheckmate()) {
-          // The player who just moved won (checkmated opponent)
-          result = 'checkmate';
-          winner = userId;
-          loser = game.player1 === userId ? game.player2 : game.player1;
-        } else if (game.chess.isDraw()) {
-          result = 'draw';
-          winner = null;
-          loser = null;
-        } else if (game.chess.isStalemate()) {
-          result = 'stalemate';
-          winner = null;
-          loser = null;
-        }
-        
-        if (result) {
-          // End the game
-          game.endGame(result, winner, loser);
-          
-          // Get final game state
-          const gameState = game.getGameState();
-          
-          // Send different data to each player
-          const player1Socket = io.sockets.sockets.get(game.player1SocketId);
-          const player2Socket = io.sockets.sockets.get(game.player2SocketId);
-          
-          if (player1Socket) {
-            const isWinner = game.player1 === winner;
-            player1Socket.emit('game_ended', {
-              gameId,
-              result,
-              winner: game.player1,
-              loser: game.player2,
-              isWinner,
-              gameState
-            });
-          }
-          
-          if (player2Socket) {
-            const isWinner = game.player2 === winner;
-            player2Socket.emit('game_ended', {
-              gameId,
-              result,
-              winner: game.player2,
-              loser: game.player1,
-              isWinner,
-              gameState
-            });
-          }
-          
-          // Remove game from active games
-          games.delete(gameId);
-          
-          // Save game to database
-          try {
-            const gameData = game.prepareGameDataForDatabase();
-            saveChessGame(gameData).catch(error => {
-              console.error(`❌ [DB] Error saving game ${gameId} to database:`, error);
-            });
-          } catch (error) {
-            console.error(`❌ [DB] Error preparing game data for database:`, error);
-          }
-          
-          // Fallback: Also emit to the game room in case individual socket emissions failed
-          console.log(`🏁 [Game] Emitting fallback game_ended to game room ${gameId}`);
-          io.to(`game_${gameId}`).emit('game_ended', {
-            gameId,
-            result: result,
-            winner: winner,
-            loser: loser,
-            gameState
-          });
-          
-          console.log(`🏁 [Game] Game ${gameId} ended by ${result}. Winner: ${winner}, Loser: ${loser}`);
-        }
-      }
-    } else {
-      socket.emit('error', { message: 'Invalid move' });
-    }
-  });
-
-  // Join a game room
-  socket.on('join_game', (data) => {
-    const { gameId } = data;
-    const userId = socket.userId;
-    
-    if (!userId) return;
-
-    const game = games.get(gameId);
-    if (!game) {
-      socket.emit('error', { message: 'Game not found' });
-      return;
-    }
-
-    if (game.player1 !== userId && game.player2 !== userId) {
-      socket.emit('error', { message: 'Not authorized to join this game' });
-      return;
-    }
-
-    socket.join(`game_${gameId}`);
-    
-    // Update socket IDs when players rejoin (handles reconnections)
-    if (game.player1 === userId) {
-      game.player1SocketId = socket.id;
-      console.log(`🔄 [Game] Updated player1 socket ID for ${userId}: ${socket.id}`);
-    } else if (game.player2 === userId) {
-      game.player2SocketId = socket.id;
-      console.log(`🔄 [Game] Updated player2 socket ID for ${userId}: ${socket.id}`);
-    }
-    
-    // Send game state immediately
-    const gameState = game.getGameState();
-    socket.emit('game_joined', { gameId, gameState });
-  });
-
-  // Keep-alive ping
-  socket.on('ping', () => {
-    socket.emit('pong');
-  });
-
-  // Resign from a game
-  socket.on('resign', (data) => {
-    const { gameId } = data;
-    const userId = socket.userId;
-    
-    if (!userId) return;
-
-    const game = games.get(gameId);
-    if (!game || game.status !== 'active') return;
-
-    console.log(`🏳️ [Game] Player ${userId} resigning from game ${gameId}`);
-    
-    // Determine winner and loser
-    const winner = game.player1 === userId ? game.player2 : game.player1;
-    const loser = userId;
-    
-    // End the game with resignation result
-    game.endGame('resignation', winner, loser);
-    
-    // Get final game state
-    const gameState = game.getGameState();
-    
-    console.log(`🏁 [Game] About to emit game_ended event for resignation`);
-    console.log(`🏁 [Game] Player1 socket ID: ${game.player1SocketId}`);
-    console.log(`🏁 [Game] Player2 socket ID: ${game.player2SocketId}`);
-    
-    // Send different data to each player
-    const player1Socket = io.sockets.sockets.get(game.player1SocketId);
-    const player2Socket = io.sockets.sockets.get(game.player2SocketId);
-    
-    if (player1Socket) {
-      const isWinner = game.player1 === winner;
-      const eventData = {
-        gameId,
-        result: 'resignation',
-        winner: game.player1,
-        loser: game.player2,
-        isWinner,
-        gameState
-      };
-      console.log(`🏁 [Game] Emitting to player1 (${game.player1}):`, eventData);
-      player1Socket.emit('game_ended', eventData);
-    } else {
-      console.log(`⚠️ [Game] Player1 socket not found for ID: ${game.player1SocketId}`);
-    }
-    
-    if (player2Socket) {
-      const isWinner = game.player2 === winner;
-      const eventData = {
-        gameId,
-        result: 'resignation',
-        winner: game.player2,
-        loser: game.player1,
-        isWinner,
-        gameState
-      };
-      console.log(`🏁 [Game] Emitting to player2 (${game.player2}):`, eventData);
-      player2Socket.emit('game_ended', eventData);
-    } else {
-      console.log(`⚠️ [Game] Player2 socket not found for ID: ${game.player2SocketId}`);
-    }
-    
-    // Remove game from active games
-    games.delete(gameId);
-    
-    // Save game to database
-    try {
-      const gameData = game.prepareGameDataForDatabase();
-      saveChessGame(gameData).catch(error => {
-        console.error(`❌ [DB] Error saving game ${gameId} (resignation) to database:`, error);
-      });
-    } catch (error) {
-      console.error(`❌ [DB] Error preparing game data for database (resignation):`, error);
-    }
-    
-    // Fallback: Also emit to the game room in case individual socket emissions failed
-    console.log(`🏁 [Game] Emitting fallback game_ended to game room ${gameId}`);
-    io.to(`game_${gameId}`).emit('game_ended', {
-      gameId,
-      result: 'resignation',
-      winner: winner,
-      loser: loser,
-      gameState
-    });
-    
-    console.log(`🏁 [Game] Game ${gameId} ended by resignation. Winner: ${winner}, Loser: ${loser}`);
-  });
-
-  // Disconnect handling
   socket.on('disconnect', () => {
     const userId = socket.userId;
     if (userId) {
       console.log(`🔌 [Disconnect] User ${userId} disconnecting`);
-      
-      for (const [timeControl, queue] of matchmakingQueue.entries()) {
-        const index = queue.findIndex(player => player.userId === userId);
-        if (index !== -1) {
-          queue.splice(index, 1);
-          console.log(`🔄 [Queue] Removed ${userId} from ${timeControl} queue due to disconnect`);
-          
-          // Notify all clients about the updated queue size
-          const queueSize = queue.length;
-          io.emit('queue_update', { timeControl, queueSize });
-        }
-      }
-
-      for (const [gameId, game] of games.entries()) {
-        if (game.status === 'active' && // Changed from 'in_progress' to 'active'
-            (game.player1 === userId || game.player2 === userId)) {
-          // Only mark as abandoned if game has been active for more than 30 seconds
-          // This prevents premature abandonment during brief disconnections
-          const gameDuration = Date.now() - (game.startTime || Date.now());
-          if (gameDuration > 30000 && game.moves.length < 2) {
-            console.log(`⚠️ [Game] Game ${gameId} abandoned due to player disconnect after ${Math.round(gameDuration/1000)}s`);
-            game.status = 'abandoned';
-          } else if (game.moves.length >= 2) {
-            console.log(`🏁 [Game] Game ${gameId} completed due to player disconnect`);
-            game.status = 'completed';
-            game.result = 'abandoned';
-            game.winner = game.player1 === userId ? game.player2 : game.player1;
-          } else {
-            console.log(`⏳ [Game] Game ${gameId} still active, waiting for reconnection`);
-            continue; // Don't end the game yet
-          }
-          handleGameEnd(game);
-        }
-      }
+      handlePlayerDisconnect(userId);
     }
-
     userSessions.delete(socket.id);
     console.log('🔌 User disconnected:', socket.id);
   });
 });
 
-// Game end handling
-function handleGameEnd(game) {
-  const gameState = game.getGameState();
-  
-  io.to(`game_${game.id}`).emit('game_ended', {
-    gameId: game.id,
-    result: gameState.result,
-    gameState
-  });
-
-  console.log(`🏁 [Game] Game ${game.id} ended:`, gameState.result);
-}
-
-// Start server
+// =============================================================================
+// SERVER STARTUP
+// =============================================================================
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
   console.log(`🚀 Socket.io server running on port ${PORT}`);
   console.log(`📊 Matchmaking queues initialized`);
+  console.log(`🎮 Game manager ready`);
 });
+
+// Periodic cleanup
+setInterval(() => {
+  // Clean up old queue entries (older than 5 minutes)
+  const now = Date.now();
+  for (const [timeControl, queue] of matchmakingQueue.entries()) {
+    const initialLength = queue.length;
+    const filteredQueue = queue.filter(player => (now - player.timestamp) < 5 * 60 * 1000);
+    
+    if (filteredQueue.length !== initialLength) {
+      matchmakingQueue.set(timeControl, filteredQueue);
+      console.log(`🧹 [Queue] Cleaned up ${timeControl} queue: ${initialLength} -> ${filteredQueue.length} players`);
+    }
+  }
+}, 5 * 60 * 1000); // Every 5 minutes 
