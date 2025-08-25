@@ -194,6 +194,23 @@ export const useSocket = () => {
       }
     });
 
+    socket.on('game_reconnected', (data) => {
+      console.log('🔄 [useSocket] Game reconnected:', data);
+      if (data.gameState) {
+        setCurrentGame(data.gameState);
+      }
+    });
+
+    socket.on('opponent_reconnecting', (data) => {
+      console.log('⏰ [useSocket] Opponent is reconnecting:', data);
+      // You could show a notification here if needed
+    });
+
+    socket.on('opponent_reconnected', (data) => {
+      console.log('✅ [useSocket] Opponent has reconnected:', data);
+      // You could show a notification here if needed
+    });
+
     socket.on('game_ended', (data: GameEndData) => {
       console.log('🏁 [useSocket] Game ended:', data);
       setCurrentGame(null);

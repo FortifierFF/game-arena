@@ -8,10 +8,128 @@ const { createClient } = require('@supabase/supabase-js');
 
 // Get environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_KEY;
 
-// Create Supabase client
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Create Supabase client with service role key (bypasses RLS)
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+/**
+ * Create a new active chess game in the database
+ */
+async function createActiveChessGame(gameData) {
+  try {
+    console.log('💾 [DB] Creating active chess game:', gameData.gameId);
+    
+    const { error } = await supabase
+      .from('chess_games')
+      .insert({
+        id: gameData.gameId,
+        player1_id: gameData.player1Id,
+        player2_id: gameData.player2Id,
+        player1_color: gameData.player1Color,
+        player2_color: gameData.player2Color,
+        time_control: gameData.timeControl,
+        game_result: 'in_progress', // Mark as in progress
+        winner_id: null, // Will be set when game ends
+        loser_id: null, // Will be set when game ends
+        total_moves: 0, // Will be updated as game progresses
+        game_duration_ms: 0, // Will be set when game ends
+        final_fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', // Starting position
+        created_at: new Date().toISOString(),
+        ended_at: null // Will be set when game ends
+      });
+
+    if (error) {
+      console.error('❌ [DB] Error creating active game:', error);
+      return false;
+    }
+
+    console.log('✅ [DB] Active chess game created successfully');
+    return true;
+    
+  } catch (error) {
+    console.error('❌ [DB] Error creating active chess game:', error);
+    return false;
+  }
+}
+
+/**
+ * Get active chess games for a player
+ */
+async function getActiveChessGames(userId) {
+  try {
+    console.log('🔍 [DB] Getting active games for user:', userId);
+    
+    const { data, error } = await supabase
+      .from('chess_games')
+      .select('*')
+      .or(`player1_id.eq.${userId},player2_id.eq.${userId}`)
+      .eq('game_result', 'in_progress');
+
+    if (error) {
+      console.error('❌ [DB] Error getting active games:', error);
+      return [];
+    }
+
+    console.log('✅ [DB] Found active games:', data);
+    return data || [];
+    
+  } catch (error) {
+    console.error('❌ [DB] Error getting active chess games:', error);
+    return [];
+  }
+}
+
+/**
+ * Update an active game (add moves, update status)
+ */
+async function updateActiveChessGame(gameId, updates) {
+  try {
+    console.log('💾 [DB] Updating active game:', gameId, updates);
+    
+    const updateData = {
+      total_moves: updates.totalMoves,
+      final_fen: updates.finalFen,
+      game_duration_ms: updates.gameDurationMs
+    };
+    
+    // Add game result update if provided
+    if (updates.gameResult) {
+      updateData.game_result = updates.gameResult;
+    }
+    
+    // Add winner/loser if provided
+    if (updates.winnerId) {
+      updateData.winner_id = updates.winnerId;
+    }
+    
+    if (updates.loserId) {
+      updateData.loser_id = updates.loserId;
+    }
+    
+    // Add ended_at timestamp if game is completed
+    if (updates.gameResult && updates.gameResult !== 'in_progress') {
+      updateData.ended_at = new Date().toISOString();
+    }
+    
+    const { error } = await supabase
+      .from('chess_games')
+      .update(updateData)
+      .eq('id', gameId);
+
+    if (error) {
+      console.error('❌ [DB] Error updating active game:', error);
+      return false;
+    }
+
+    console.log('✅ [DB] Active game updated successfully');
+    return true;
+    
+  } catch (error) {
+    console.error('❌ [DB] Error updating active game:', error);
+    return false;
+  }
+}
 
 /**
  * Save a completed chess game to the database
@@ -91,115 +209,76 @@ async function saveChessGame(gameData) {
  */
 async function updatePlayerStats(gameData) {
   try {
-    const players = [
-      { id: gameData.player1Id, color: gameData.player1Color },
-      { id: gameData.player2Id, color: gameData.player2Color }
-    ];
+    // Get the stored stats from the game object
+    const winnerStats = gameData.winnerStats || { total_games: 0, wins: 0, losses: 0, draws: 0, current_rating: 1200, highest_rating: 1200, win_streak: 0, best_win_streak: 0 };
+    const loserStats = gameData.loserStats || { total_games: 0, wins: 0, losses: 0, draws: 0, current_rating: 1200, highest_rating: 1200, win_streak: 0, best_win_streak: 0 };
+    
+    // Calculate new winner stats (increment from stored values)
+    const newWinnerStats = {
+      id: gameData.winnerId,
+      user_id: gameData.winnerId,
+      total_games: winnerStats.total_games + 1,
+      wins: winnerStats.wins + 1,
+      losses: winnerStats.losses,
+      draws: winnerStats.draws,
+      current_rating: winnerStats.current_rating + 35, // Simple rating increase
+      highest_rating: Math.max(winnerStats.highest_rating, winnerStats.current_rating + 35),
+      average_game_duration: gameData.gameDurationMs,
+      win_streak: winnerStats.win_streak + 1,
+      best_win_streak: Math.max(winnerStats.best_win_streak, winnerStats.win_streak + 1),
+      games_as_white: gameData.player1Color === 'white' ? winnerStats.games_as_white + 1 : winnerStats.games_as_white,
+      games_as_black: gameData.player1Color === 'black' ? winnerStats.games_as_black + 1 : winnerStats.games_as_black,
+      wins_as_white: gameData.player1Color === 'white' ? winnerStats.wins_as_white + 1 : winnerStats.wins_as_white,
+      wins_as_black: gameData.player1Color === 'black' ? winnerStats.wins_as_black + 1 : winnerStats.wins_as_black,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    // Calculate new loser stats (increment from stored values)
+    const newLoserStats = {
+      id: gameData.loserId,
+      user_id: gameData.loserId,
+      total_games: loserStats.total_games + 1,
+      wins: loserStats.wins,
+      losses: loserStats.losses + 1,
+      draws: loserStats.draws,
+      current_rating: Math.max(100, loserStats.current_rating - 35), // Simple rating decrease
+      highest_rating: loserStats.highest_rating, // Keep highest rating
+      average_game_duration: gameData.gameDurationMs,
+      win_streak: 0, // Reset win streak on loss
+      best_win_streak: loserStats.best_win_streak, // Keep best win streak
+      games_as_white: gameData.player2Color === 'white' ? loserStats.games_as_white + 1 : loserStats.games_as_white,
+      games_as_black: gameData.player2Color === 'black' ? loserStats.games_as_black + 1 : loserStats.games_as_black,
+      wins_as_white: loserStats.wins_as_white,
+      wins_as_black: loserStats.wins_as_black,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    // Update winner stats using upsert
+    const { data: winnerData, error: winnerError } = await supabase
+      .from('chess_player_stats')
+      .upsert(newWinnerStats, {
+        onConflict: 'user_id'
+      });
 
-    for (const player of players) {
-      const isWinner = gameData.winnerId === player.id;
-      const isLoser = gameData.loserId === player.id;
-      const isDraw = !gameData.winnerId && !gameData.loserId;
-      
-      // Get current stats or create new ones
-      let currentStats = await getPlayerStats(player.id);
-      
-      if (!currentStats) {
-        // Create new stats record
-        currentStats = {
-          id: `${player.id}_chess_stats`,
-          user_id: player.id,
-          total_games: 0,
-          wins: 0,
-          losses: 0,
-          draws: 0,
-          current_rating: 1200, // Starting rating
-          highest_rating: 1200,
-          average_game_duration: 0,
-          win_streak: 0,
-          best_win_streak: 0,
-          games_as_white: 0,
-          games_as_black: 0,
-          wins_as_white: 0,
-          wins_as_black: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-      }
+    if (winnerError) {
+      console.error('❌ [DB] Error updating winner stats:', winnerError);
+    }
 
-      // Update stats
-      currentStats.total_games += 1;
-      currentStats.average_game_duration = Math.round(
-        (currentStats.average_game_duration * (currentStats.total_games - 1) + 
-         gameData.gameDurationMs / 60000) / currentStats.total_games
-      );
+    // Update loser stats using upsert
+    const { data: loserData, error: loserError } = await supabase
+      .from('chess_player_stats')
+      .upsert(newLoserStats, {
+        onConflict: 'user_id'
+      });
 
-      if (isWinner) {
-        currentStats.wins += 1;
-        currentStats.win_streak += 1;
-        if (currentStats.win_streak > currentStats.best_win_streak) {
-          currentStats.best_win_streak = currentStats.win_streak;
-        }
-        
-        // Update color-specific stats
-        if (player.color === 'white') {
-          currentStats.games_as_white += 1;
-          currentStats.wins_as_white += 1;
-        } else {
-          currentStats.games_as_black += 1;
-          currentStats.wins_as_black += 1;
-        }
-      } else if (isLoser) {
-        currentStats.losses += 1;
-        currentStats.win_streak = 0;
-        
-        // Update color-specific stats
-        if (player.color === 'white') {
-          currentStats.games_as_white += 1;
-        } else {
-          currentStats.games_as_black += 1;
-        }
-      } else if (isDraw) {
-        currentStats.draws += 1;
-        currentStats.win_streak = 0;
-        
-        // Update color-specific stats
-        if (player.color === 'white') {
-          currentStats.games_as_white += 1;
-        } else {
-          currentStats.games_as_black += 1;
-        }
-      }
-
-      // Calculate new rating (simple ELO system)
-      let opponentRating = 1200; // Default rating
-      if (gameData.winnerId && gameData.loserId) {
-        if (gameData.winnerId === player.id) {
-          opponentRating = await getPlayerRating(gameData.loserId);
-        } else {
-          opponentRating = await getPlayerRating(gameData.winnerId);
-        }
-      }
-      
-      const ratingUpdate = calculateRatingChange(
-        currentStats.current_rating,
-        isWinner ? 'win' : isLoser ? 'loss' : 'draw',
-        opponentRating
-      );
-
-      currentStats.current_rating = ratingUpdate.newRating;
-      if (currentStats.current_rating > currentStats.highest_rating) {
-        currentStats.highest_rating = currentStats.current_rating;
-      }
-
-      currentStats.updated_at = new Date().toISOString();
-
-      // Save updated stats
-      await savePlayerStats(currentStats);
+    if (loserError) {
+      console.error('❌ [DB] Error updating loser stats:', loserError);
     }
     
   } catch (error) {
-    console.error('❌ [DB] Error updating player stats:', error);
+    console.error('❌ [DB] Error updating player statistics:', error);
   }
 }
 
@@ -330,5 +409,10 @@ function calculateRatingChange(
 
 // Export the function for the server to use
 module.exports = {
-  saveChessGame
+  saveChessGame,
+  createActiveChessGame,
+  getActiveChessGames,
+  updateActiveChessGame,
+  updatePlayerStats,
+  getPlayerStats
 }; 

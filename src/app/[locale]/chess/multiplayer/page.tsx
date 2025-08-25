@@ -5,6 +5,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { useSocket } from '@/hooks/useSocket';
 import { Matchmaking, MultiplayerChess } from '@/components/chess';
 import GameEndModal from '@/components/chess/GameEndModal';
+import ReconnectButton from '@/components/chess/ReconnectButton';
 import Icon, { Users } from '@/components/ui/Icon';
 
 export default function MultiplayerChessPage() {
@@ -56,6 +57,24 @@ export default function MultiplayerChessPage() {
     window.location.href = '/';
     console.log('🏠 [Multiplayer Page] Navigating to home page');
   }, []);
+
+  // Handle reconnection to existing game
+  const handleReconnect = useCallback((gameId: string) => {
+    console.log('🔄 [Multiplayer Page] Reconnecting to game:', gameId);
+    
+    // Set up the game data for reconnection
+    // The actual game data will come from the server
+    setGameData({
+      gameId: gameId,
+      opponent: 'Reconnecting...', // Will be updated when we get game state
+      color: 'white' // Will be updated when we get game state
+    });
+    
+    setGameState('playing');
+    
+    // Join the game to receive updates
+    joinGame(gameId);
+  }, [joinGame]);
 
   // Game found handler - defined once and stored in ref
   const handleGameFound = useCallback((data: { gameId: string; opponent: string; color: 'white' | 'black' }) => {
@@ -180,6 +199,9 @@ export default function MultiplayerChessPage() {
       {/* Game State Management */}
       {gameState === 'matchmaking' && (
         <div className="max-w-2xl mx-auto">
+          {/* Check for active games and show reconnect button */}
+          <ReconnectButton onReconnect={handleReconnect} />
+          
           <Matchmaking />
         </div>
       )}

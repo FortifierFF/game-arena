@@ -1,16 +1,31 @@
 import { NextResponse } from 'next/server';
 
 // API route to get active chess games
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    // This is a placeholder implementation
-    // In a real app, you would query your database for active games
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+    
+    if (!userId) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'userId parameter is required' 
+        },
+        { status: 400 }
+      );
+    }
+    
+    // This will be implemented to query the server for active games
+    // For now, return empty array - the actual implementation will be
+    // handled by the server-side function getActiveGamesForPlayer()
     const activeGames: unknown[] = [];
     
     return NextResponse.json({
       success: true,
       games: activeGames,
-      count: activeGames.length
+      count: activeGames.length,
+      userId: userId
     });
   } catch (error) {
     console.error('Error fetching active games:', error);
