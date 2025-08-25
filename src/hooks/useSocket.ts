@@ -181,7 +181,9 @@ export const useSocket = () => {
     });
 
     socket.on('move_made', (data) => {
+      console.log('🔄 [useSocket] Received move_made event:', data);
       if (data.gameState) {
+        console.log('🔄 [useSocket] Updating current game state:', data.gameState);
         setCurrentGame(data.gameState);
       }
     });
